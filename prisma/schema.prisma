@@ -1,0 +1,90 @@
+// BOVAP – dátový model (emailová aplikácia pre OZ)
+// Z architektúry: /docs/ARCHITEKTURA.md §4
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         String   @default("admin") // admin (1–2 účty)
+  createdAt    DateTime @default(now())
+}
+
+model Subscriber {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String?
+  status           String    @default("ACTIVE") // ACTIVE | UNSUBSCRIBED | BOUNCED | COMPLAINED
+  source           String    @default("IMPORT") // IMPORT | MANUAL | WEB
+  unsubscribeToken String    @unique
+  unsubscribedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  groups           SubscriberGroup[]
+  recipients       CampaignRecipient[]
+}
+
+model Group {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  subscribers SubscriberGroup[]
+}
+
+model SubscriberGroup {
+  subscriberId String
+  groupId      String
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([subscriberId, groupId])
+}
+
+model Campaign {
+  id               String              @id @default(cuid())
+  name             String
+  subject          String // nadpis (subject)
+  title            String // titulok v tele
+  bodyText         String // text správy
+  imageUrl         String? // fotka (upload/URL)
+  status           String              @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
+  recipientsTarget Int                 @default(0)
+  recipientsSent   Int                 @default(0)
+  statsOpened      Int                 @default(0)
+  statsClicked     Int                 @default(0)
+  statsBounced     Int                 @default(0)
+  statsUnsub       Int                 @default(0)
+  scheduledAt      DateTime?
+  sentAt           DateTime?
+  createdAt        DateTime            @default(now())
+  recipients       CampaignRecipient[]
+}
+
+model CampaignRecipient {
+  id           String    @id @default(cuid())
+  campaignId   String
+  subscriberId String
+  status       String    @default("PENDING") // PENDING | SENT | DELIVERED | OPENED | CLICKED | BOUNCED | FAILED
+  error        String?
+  sentAt       DateTime?
+  openedAt     DateTime?
+  clickedAt    DateTime?
+  campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+}
+
+model Setting {
+  key   String @id
+  value String
+  // senderName, senderEmail, footerText, templateBody, unsubscribeUrl...
+}
