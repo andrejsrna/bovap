@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
@@ -28,10 +28,14 @@ export async function loginAction(
   }
 
   const store = await cookies();
+  // Preview beží cez HTTP; produkčné mail.bovap.sk cez HTTPS.
+  // Secure cookie sa cez HTTP neposiela, takže by proxy vrátila login.
+  const requestHeaders = await headers();
+  const isHttps = requestHeaders.get("x-forwarded-proto") === "https";
   store.set(SESSION_COOKIE_NAME, await createSessionToken(user.id), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isHttps,
     path: "/",
     maxAge: SESSION_MAX_AGE_SECONDS,
   });
