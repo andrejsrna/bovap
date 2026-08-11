@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -99,12 +100,12 @@ export async function updateSubscriberAction(formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim() || null;
   const status = String(formData.get("status") ?? "ACTIVE");
-  const groupNames = [...new Set(
+  const groupNames = Array.from(new Set(
     String(formData.get("groups") ?? "")
       .split(",")
       .map((name) => name.trim())
       .filter(Boolean),
-  )];
+  ));
   const validStatuses = ["ACTIVE", "UNSUBSCRIBED", "BOUNCED", "COMPLAINED"];
 
   if (!id || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -141,6 +142,31 @@ export async function deleteSubscriberAction(formData: FormData) {
 }
 
 // ---- Nastavenia ----
+
+export async function saveTestRecipientsAction(formData: FormData) {
+  const recipients = parseTestRecipients(String(formData.get("testRecipients") ?? ""));
+  await prisma.setting.upsert({
+    where: { key: "testRecipients" },
+    update: { value: recipients.join(", ") },
+    create: { key: "testRecipients", value: recipients.join(", ") },
+  });
+  redirect("/nastavenia?testSaved=1");
+}
+
+export async function createGroupAction(formData: FormData) {
+  const name = validGroupName(String(formData.get("name") ?? ""));
+  if (name) await prisma.group.upsert({ where: { name }, update: {}, create: { name } });
+  redirect("/nastavenia?groupSaved=1");
+}
+
+export async function deleteGroupAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/nastavenia");
+  const count = await prisma.subscriberGroup.count({ where: { groupId: id } });
+  if (count) redirect("/nastavenia?groupError=occupied");
+  await prisma.group.delete({ where: { id } });
+  redirect("/nastavenia?groupDeleted=1");
+}
 
 export async function updateSettingsAction(
   _prev: ActionState,
