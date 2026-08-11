@@ -94,6 +94,52 @@ export async function addSubscriberAction(
   redirect("/odberatelia");
 }
 
+export async function updateSubscriberAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const name = String(formData.get("name") ?? "").trim() || null;
+  const status = String(formData.get("status") ?? "ACTIVE");
+  const groupNames = [...new Set(
+    String(formData.get("groups") ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter(Boolean),
+  )];
+  const validStatuses = ["ACTIVE", "UNSUBSCRIBED", "BOUNCED", "COMPLAINED"];
+
+  if (!id || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect("/odberatelia");
+  }
+  if (!validStatuses.includes(status)) redirect(`/odberatelia/${id}`);
+
+  await prisma.$transaction(async (tx) => {
+    const groups = await Promise.all(
+      groupNames.map((name) => tx.group.upsert({ where: { name }, update: {}, create: { name } })),
+    );
+    await tx.subscriber.update({
+      where: { id },
+      data: {
+        email,
+        name,
+        status,
+        unsubscribedAt: status === "UNSUBSCRIBED" ? new Date() : null,
+        groups: {
+          deleteMany: {},
+          create: groups.map((group) => ({ groupId: group.id })),
+        },
+      },
+    });
+  });
+  redirect(`/odberatelia/${id}?saved=1`);
+}
+
+export async function deleteSubscriberAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) redirect("/odberatelia");
+  await prisma.subscriber.delete({ where: { id } });
+  redirect("/odberatelia?deleted=1");
+}
+
 // ---- Nastavenia ----
 
 export async function updateSettingsAction(
