@@ -54,6 +54,7 @@ model Campaign {
   subject          String // nadpis (subject)
   title            String // titulok v tele
   bodyText         String // text správy
+  cards            String @default("[]") // JSON: titulok, popis, link
   imageUrl         String? // fotka (upload/URL)
   status           String              @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
   recipientsTarget Int                 @default(0)

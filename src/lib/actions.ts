@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
+import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -60,13 +61,41 @@ export async function createCampaignAction(
   const title = String(formData.get("title") ?? "").trim();
   const bodyText = String(formData.get("bodyText") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
+  const cards = parseCampaignCards(String(formData.get("cards") ?? "[]"));
 
   if (!name || !subject) return { error: "Vyplňte názov a nadpis kampane." };
 
   const campaign = await prisma.campaign.create({
-    data: { name, subject, title, bodyText, imageUrl, status: "DRAFT" },
+    data: { name, subject, title, bodyText, cards: JSON.stringify(cards), imageUrl, status: "DRAFT" },
   });
   redirect(`/kampane/${campaign.id}`);
+}
+
+export async function sendCampaignTestAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const campaign = await prisma.campaign.findUnique({ where: { id } });
+  const setting = await prisma.setting.findUnique({ where: { key: "testRecipients" } });
+  const recipients = parseTestRecipients(setting?.value ?? "");
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!campaign || !recipients.length || !apiKey) redirect(`/kampane/${id}?testError=1`);
+
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const [senderName, senderEmail] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: "senderName" } }),
+    prisma.setting.findUnique({ where: { key: "senderEmail" } }),
+  ]);
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": apiKey, "content-type": "application/json" },
+    body: JSON.stringify({
+      sender: { name: senderName?.value || "OZ BOVAP", email: senderEmail?.value || "noreply@bovap.sk" },
+      to: recipients.map((email) => ({ email })),
+      subject: `[TEST] ${campaign.subject}`,
+      htmlContent: renderCampaignHtml({ title: campaign.title || campaign.subject, bodyText: campaign.bodyText, cards: parseCampaignCards(campaign.cards), unsubscribeUrl: `${appUrl}/odhlasenie/ukazka` }),
+    }),
+  });
+  if (!response.ok) redirect(`/kampane/${id}?testError=1`);
+  redirect(`/kampane/${id}?testSent=${recipients.length}`);
 }
 
 // ---- Odoberatelia ----
