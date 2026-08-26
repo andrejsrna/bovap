@@ -8,7 +8,7 @@ import { Card, CardBody } from "@/components/ui/Card";
 import { CAMPAIGN_STATUS, formatDate } from "@/lib/utils";
 import { parseCampaignCards } from "@/lib/campaign-content";
 
-export default async function KampanDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ testSent?: string; testError?: string }> }) {
+export default async function KampanDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; testSent?: string; testError?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
   const [campaign, testSetting] = await Promise.all([
@@ -21,7 +21,8 @@ export default async function KampanDetailPage({ params, searchParams }: { param
   const tests = testSetting?.value.split(/[,;\s]+/).filter(Boolean) ?? [];
 
   return <div className="mx-auto max-w-5xl space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-4"><div><Link href="/kampane" className="text-sm font-medium text-primary-600">← Späť na kampane</Link><h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">{campaign.name}</h1></div><Badge tone={status.tone}>{status.label}</Badge></div>
+    <div className="flex flex-wrap items-center justify-between gap-4"><div><Link href="/kampane" className="text-sm font-medium text-primary-600">← Späť na kampane</Link><h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">{campaign.name}</h1></div><div className="flex items-center gap-3"><Badge tone={status.tone}>{status.label}</Badge>{campaign.status === "DRAFT" ? <ButtonLink href={`/kampane/${campaign.id}/upravit`}>Upraviť obsah</ButtonLink> : null}</div></div>
+    {query.saved ? <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Zmeny kampane boli uložené.</p> : null}
     {query.testSent ? <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Test odoslaný na {query.testSent} testovacích adries.</p> : null}
     {query.testError ? <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Test sa neodoslal. Skontrolujte testovacie adresy a odosielateľa v Nastaveniach.</p> : null}
     <div className="grid gap-6 lg:grid-cols-[1fr_320px]">

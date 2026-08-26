@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
+import { campaignDraftInput } from "@/lib/campaign-edit";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -69,6 +70,19 @@ export async function createCampaignAction(
     data: { name, subject, title, bodyText, cards: JSON.stringify(cards), imageUrl, status: "DRAFT" },
   });
   redirect(`/kampane/${campaign.id}`);
+}
+
+export async function updateCampaignAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const input = campaignDraftInput(formData);
+  if (!id || !input) redirect(`/kampane/${id}/upravit?error=1`);
+  const campaign = await prisma.campaign.findUnique({ where: { id } });
+  if (!campaign || campaign.status !== "DRAFT") redirect(`/kampane/${id}`);
+  await prisma.campaign.update({
+    where: { id },
+    data: { ...input, cards: JSON.stringify(parseCampaignCards(input.cards)) },
+  });
+  redirect(`/kampane/${id}?saved=1`);
 }
 
 export async function sendCampaignTestAction(formData: FormData) {
