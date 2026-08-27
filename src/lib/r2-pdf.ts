@@ -22,32 +22,33 @@ const dateParts = () => {
 
 export async function uploadCampaignPdf(file: File, campaignId: string) {
   const input = pdfUploadInput(file);
-  const accountId = process.env.R2_ACCOUNT_ID;
-  const accessKey = process.env.R2_ACCESS_KEY_ID;
-  const secret = process.env.R2_SECRET_ACCESS_KEY;
-  const bucket = process.env.R2_BUCKET;
-  const publicUrl = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
-  if (!input || !accountId || !accessKey || !secret || !bucket || !publicUrl) throw new Error("PDF alebo R2 nastavenia nie sú platné.");
+  const endpoint = process.env.S3_ENDPOINT?.replace(/\/$/, "");
+  const accessKey = process.env.S3_ACCESS_KEY_ID;
+  const secret = process.env.S3_SECRET_ACCESS_KEY;
+  const bucket = process.env.S3_BUCKET;
+  const region = process.env.S3_REGION || "us-east-1";
+  const publicUrl = process.env.S3_PUBLIC_URL?.replace(/\/$/, "");
+  if (!input || !endpoint || !accessKey || !secret || !bucket || !publicUrl) throw new Error("PDF alebo S3/MinIO nastavenia nie sú platné.");
   const bytes = await file.arrayBuffer();
   if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") throw new Error("Súbor nie je platný PDF dokument.");
 
   const objectKey = `bovap/kampane/${campaignId}/${crypto.randomUUID()}-${input.key}`;
   const encodedKey = objectKey.split("/").map(encodeURIComponent).join("/");
-  const host = `${accountId}.r2.cloudflarestorage.com`;
+  const host = new URL(endpoint).host;
   const payloadHash = await sha256(bytes);
   const { date, amzDate } = dateParts();
   const canonicalHeaders = `content-type:application/pdf\nhost:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
   const signedHeaders = "content-type;host;x-amz-content-sha256;x-amz-date";
   const canonicalRequest = `PUT\n/${bucket}/${encodedKey}\n\n${canonicalHeaders}\n${signedHeaders}\n${payloadHash}`;
-  const scope = `${date}/auto/s3/aws4_request`;
+  const scope = `${date}/${region}/s3/aws4_request`;
   const stringToSign = `AWS4-HMAC-SHA256\n${amzDate}\n${scope}\n${await sha256(canonicalRequest)}`;
   const dateKey = await hmac(new TextEncoder().encode(`AWS4${secret}`), date);
-  const regionKey = await hmac(dateKey, "auto");
+  const regionKey = await hmac(dateKey, region);
   const serviceKey = await hmac(regionKey, "s3");
   const signingKey = await hmac(serviceKey, "aws4_request");
   const signature = hex(await hmac(signingKey, stringToSign));
   const authorization = `AWS4-HMAC-SHA256 Credential=${accessKey}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
-  const response = await fetch(`https://${host}/${bucket}/${encodedKey}`, { method: "PUT", headers: { "content-type": "application/pdf", host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate, authorization }, body: bytes });
+  const response = await fetch(`${endpoint}/${bucket}/${encodedKey}`, { method: "PUT", headers: { "content-type": "application/pdf", host, "x-amz-content-sha256": payloadHash, "x-amz-date": amzDate, authorization }, body: bytes });
   if (!response.ok) throw new Error("PDF sa nepodarilo nahrať do úložiska.");
   return `${publicUrl}/${encodedKey}`;
 }
