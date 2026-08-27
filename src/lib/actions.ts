@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import { campaignDraftInput } from "@/lib/campaign-edit";
+import { attachPdfLinks } from "@/lib/r2-pdf";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -69,6 +70,12 @@ export async function createCampaignAction(
   const campaign = await prisma.campaign.create({
     data: { name, subject, title, bodyText, cards: JSON.stringify(cards), imageUrl, status: "DRAFT" },
   });
+  try {
+    const cardsWithPdfs = await attachPdfLinks(cards, formData, campaign.id);
+    if (cardsWithPdfs.some((card, index) => card.url !== cards[index]?.url)) await prisma.campaign.update({ where: { id: campaign.id }, data: { cards: JSON.stringify(cardsWithPdfs) } });
+  } catch {
+    redirect(`/kampane/${campaign.id}?uploadError=1`);
+  }
   redirect(`/kampane/${campaign.id}`);
 }
 
@@ -78,10 +85,12 @@ export async function updateCampaignAction(formData: FormData) {
   if (!id || !input) redirect(`/kampane/${id}/upravit?error=1`);
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign || campaign.status !== "DRAFT") redirect(`/kampane/${id}`);
-  await prisma.campaign.update({
-    where: { id },
-    data: { ...input, cards: JSON.stringify(parseCampaignCards(input.cards)) },
-  });
+  try {
+    const cards = await attachPdfLinks(parseCampaignCards(input.cards), formData, id);
+    await prisma.campaign.update({ where: { id }, data: { ...input, cards: JSON.stringify(cards) } });
+  } catch {
+    redirect(`/kampane/${id}/upravit?uploadError=1`);
+  }
   redirect(`/kampane/${id}?saved=1`);
 }
 

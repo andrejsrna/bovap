@@ -14,7 +14,7 @@ export function parseCampaignCards(value: string): CampaignCard[] {
       const title = typeof card.title === "string" ? card.title.trim() : "";
       const description = typeof card.description === "string" ? card.description.trim() : "";
       const url = typeof card.url === "string" ? card.url.trim() : "";
-      return title && url.startsWith("http") ? [{ title, description, url }] : [];
+      return title && (url.startsWith("http") || !url) ? [{ title, description, url }] : [];
     });
   } catch { return []; }
 }

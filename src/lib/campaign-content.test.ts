@@ -3,6 +3,7 @@ import { parseCampaignCards, renderCampaignHtml } from "./campaign-content";
 
 assert.deepEqual(parseCampaignCards('[{"title":"Výzva","description":"Popis","url":"https://bovap.sk"}]'), [{ title: "Výzva", description: "Popis", url: "https://bovap.sk" }]);
 assert.deepEqual(parseCampaignCards('not-json'), []);
+assert.deepEqual(parseCampaignCards('[{"title":"PDF","description":"","url":""}]'), [{ title: "PDF", description: "", url: "" }]);
 const email = renderCampaignHtml({ title: "Dôležité", bodyText: "Dobrý deň", cards: [{ title: "Výzva", description: "<script>", url: "https://bovap.sk" }], unsubscribeUrl: "https://mail.bovap.sk/odhlasenie/token" });
 assert.match(email, /&lt;script&gt;/);
 assert.match(email, /Praktické informácie/);
