@@ -99,9 +99,9 @@ export default async function DashboardPage() {
                 return (
                   <li key={c.id} className="flex items-center justify-between gap-4 py-3">
                     <div className="min-w-0">
-                      <p className="truncate font-medium text-gray-900">
+                      <Link href={`/kampane/${c.id}`} className="block truncate font-medium text-gray-900 hover:text-primary-700">
                         {c.name}
-                      </p>
+                      </Link>
                       <p className="truncate text-sm text-gray-400">
                         {c.subject}
                       </p>

@@ -55,6 +55,7 @@ model Campaign {
   title            String // titulok v tele
   bodyText         String // text správy
   cards            String @default("[]") // JSON: titulok, popis, link
+  documents        String @default("[]") // JSON: názov dokumentu, verejný link
   imageUrl         String? // fotka (upload/URL)
   status           String              @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
   recipientsTarget Int                 @default(0)

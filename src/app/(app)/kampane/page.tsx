@@ -67,7 +67,9 @@ export default async function KampanePage() {
                 return (
                   <tr key={c.id} className="hover:bg-gray-50">
                     <th className="px-6 py-4 font-medium text-gray-900">
-                      {c.name}
+                      <Link href={`/kampane/${c.id}`} className="hover:text-primary-700">
+                        {c.name}
+                      </Link>
                     </th>
                     <td className="px-6 py-4">{c.subject}</td>
                     <td className="px-6 py-4">

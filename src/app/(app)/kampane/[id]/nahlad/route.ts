@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
+import { parseCampaignDocuments } from "@/lib/campaign-documents";
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,6 +12,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     title: campaign.title || campaign.subject,
     bodyText: campaign.bodyText,
     cards: parseCampaignCards(campaign.cards),
+    documents: parseCampaignDocuments(campaign.documents),
     unsubscribeUrl: `${appUrl}/odhlasenie/ukazka`,
   });
   return new NextResponse(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });

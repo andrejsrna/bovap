@@ -61,3 +61,11 @@ export async function attachPdfLinks(cards: { title: string; description: string
   }
   return result;
 }
+
+export async function attachCampaignDocuments(existing: { name: string; url: string }[], formData: FormData, campaignId: string) {
+  const result = [...existing];
+  for (const file of formData.getAll("documents")) {
+    if (file instanceof File && file.size) result.push({ name: file.name, url: await uploadCampaignPdf(file, campaignId) });
+  }
+  return result;
+}

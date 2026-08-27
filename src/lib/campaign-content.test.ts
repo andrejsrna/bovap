@@ -9,4 +9,5 @@ assert.match(email, /&lt;script&gt;/);
 assert.match(email, /Praktické informácie/);
 assert.match(email, /Pozrieť podrobnosti/);
 assert.match(email, /max-width: 620px/);
+assert.match(renderCampaignHtml({ title: "T", bodyText: "", cards: [], documents: [{ name: "Výzva.pdf", url: "https://s3.synthbit.sk/bovap/vyzva.pdf" }], unsubscribeUrl: "https://bovap.sk/odhlasenie" }), /Dokumenty na stiahnutie/);
 console.log("campaign-content: OK");

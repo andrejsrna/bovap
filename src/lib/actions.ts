@@ -7,7 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import { campaignDraftInput } from "@/lib/campaign-edit";
-import { attachPdfLinks } from "@/lib/r2-pdf";
+import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
+import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -72,7 +73,8 @@ export async function createCampaignAction(
   });
   try {
     const cardsWithPdfs = await attachPdfLinks(cards, formData, campaign.id);
-    if (cardsWithPdfs.some((card, index) => card.url !== cards[index]?.url)) await prisma.campaign.update({ where: { id: campaign.id }, data: { cards: JSON.stringify(cardsWithPdfs) } });
+    const documents = await attachCampaignDocuments([], formData, campaign.id);
+    if (cardsWithPdfs.some((card, index) => card.url !== cards[index]?.url) || documents.length) await prisma.campaign.update({ where: { id: campaign.id }, data: { cards: JSON.stringify(cardsWithPdfs), documents: JSON.stringify(documents) } });
   } catch {
     redirect(`/kampane/${campaign.id}?uploadError=1`);
   }
@@ -87,7 +89,8 @@ export async function updateCampaignAction(formData: FormData) {
   if (!campaign || campaign.status !== "DRAFT") redirect(`/kampane/${id}`);
   try {
     const cards = await attachPdfLinks(parseCampaignCards(input.cards), formData, id);
-    await prisma.campaign.update({ where: { id }, data: { ...input, cards: JSON.stringify(cards) } });
+    const documents = await attachCampaignDocuments(parseCampaignDocuments(String(formData.get("documents") ?? "[]")), formData, id);
+    await prisma.campaign.update({ where: { id }, data: { ...input, cards: JSON.stringify(cards), documents: JSON.stringify(documents) } });
   } catch {
     redirect(`/kampane/${id}/upravit?uploadError=1`);
   }
@@ -114,7 +117,7 @@ export async function sendCampaignTestAction(formData: FormData) {
       sender: { name: senderName?.value || "OZ BOVAP", email: senderEmail?.value || "noreply@bovap.sk" },
       to: recipients.map((email) => ({ email })),
       subject: `[TEST] ${campaign.subject}`,
-      htmlContent: renderCampaignHtml({ title: campaign.title || campaign.subject, bodyText: campaign.bodyText, cards: parseCampaignCards(campaign.cards), unsubscribeUrl: `${appUrl}/odhlasenie/ukazka` }),
+      htmlContent: renderCampaignHtml({ title: campaign.title || campaign.subject, bodyText: campaign.bodyText, cards: parseCampaignCards(campaign.cards), documents: parseCampaignDocuments(campaign.documents), unsubscribeUrl: `${appUrl}/odhlasenie/ukazka` }),
     }),
   });
   if (!response.ok) redirect(`/kampane/${id}?testError=1`);

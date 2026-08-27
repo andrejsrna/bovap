@@ -34,6 +34,7 @@ export default function NewCampaignForm() {
       </div>
       <button type="button" onClick={() => setCards((items) => [...items, blank()])} className="mt-4 text-sm font-semibold text-primary-700 hover:text-primary-800">+ Pridať kartu</button>
     </section>
+    <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:p-5"><h2 className="font-semibold text-gray-900">Prílohy kampane</h2><p className="mt-1 text-sm text-gray-500">Samostatné PDF dokumenty mimo kariet. V emaili sa ukážu v zozname na stiahnutie.</p><div className="mt-4"><Label htmlFor="documents">Pridať PDF dokumenty</Label><Input id="documents" name="documents" type="file" accept="application/pdf,.pdf" multiple /></div></section>
     <div className="flex justify-end border-t border-gray-100 pt-5"><Button type="submit" disabled={pending}>{pending ? "Ukladám…" : "Uložiť a otvoriť náhľad"}</Button></div>
   </form>;
 }
