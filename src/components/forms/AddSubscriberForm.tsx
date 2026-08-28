@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Field, Input, Label } from "@/components/ui/Input";
 
-export default function AddSubscriberForm() {
+export default function AddSubscriberForm({ groups }: { groups: string[] }) {
   const [state, formAction, pending] = useActionState(
     addSubscriberAction,
     undefined,
   );
 
   return (
-    <form action={formAction} className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+    <form action={formAction} className="grid gap-4 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
       {state?.error ? (
-        <div className="sm:col-span-3">
+        <div className="sm:col-span-4">
           <ErrorAlert message={state.error} />
         </div>
       ) : null}
@@ -34,6 +34,14 @@ export default function AddSubscriberForm() {
       <Field>
         <Label htmlFor="sub-name">Meno (voliteľné)</Label>
         <Input id="sub-name" name="name" placeholder="Meno a priezvisko" />
+      </Field>
+
+      <Field>
+        <Label htmlFor="sub-groups">Skupiny</Label>
+        <Input id="sub-groups" name="groups" list="sub-groups-list" placeholder="napr. Západ, Východ" />
+        <datalist id="sub-groups-list">
+          {groups.map((group) => <option key={group} value={group} />)}
+        </datalist>
       </Field>
 
       <Button type="submit" disabled={pending}>

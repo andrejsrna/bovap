@@ -32,7 +32,7 @@ export default async function OdoberateliaPage({ searchParams }: { searchParams:
       <div><h1 className="text-2xl font-semibold tracking-tight text-gray-900">Odoberatelia</h1><p className="mt-1 text-sm text-gray-500">Správa príjemcov, skupín a súhlasov.</p></div>
       <div className="grid grid-cols-3 gap-2 text-center text-xs"><div className="rounded-lg border border-gray-200 bg-white px-3 py-2"><b className="block text-base text-gray-900">{activeCount}</b>aktívnych</div><div className="rounded-lg border border-gray-200 bg-white px-3 py-2"><b className="block text-base text-gray-900">{unsubscribedCount}</b>odhlásených</div><div className="rounded-lg border border-gray-200 bg-white px-3 py-2"><b className="block text-base text-gray-900">{groups.length}</b>skupín</div></div>
     </div>
-    <Card className="p-4 sm:p-6"><AddSubscriberForm /></Card>
+    <Card className="p-4 sm:p-6"><AddSubscriberForm groups={groups.map((g) => g.name)} /></Card>
     {((await searchParams).deleted === "1") && <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">Odoberateľ bol odstránený.</div>}
     <Card className="p-4 sm:p-5">
       <form className="grid gap-3 md:grid-cols-[1fr_auto_auto]" method="GET">

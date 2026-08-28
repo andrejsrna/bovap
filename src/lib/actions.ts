@@ -9,6 +9,7 @@ import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import { campaignDraftInput } from "@/lib/campaign-edit";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
+import { subscriberGroupInput } from "@/lib/subscriber-query";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -132,11 +133,12 @@ export async function addSubscriberAction(
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim() || null;
+  const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return { error: "Zadajte platnú emailovú adresu." };
   }
 
-  await prisma.subscriber.upsert({
+  const subscriber = await prisma.subscriber.upsert({
     where: { email },
     update: {},
     create: {
@@ -147,6 +149,18 @@ export async function addSubscriberAction(
       unsubscribeToken: crypto.randomUUID(),
     },
   });
+  if (groupNames.length) {
+    await prisma.$transaction(async (tx) => {
+      for (const groupName of groupNames) {
+        const group = await tx.group.upsert({ where: { name: groupName }, update: {}, create: { name: groupName } });
+        await tx.subscriberGroup.upsert({
+          where: { subscriberId_groupId: { subscriberId: subscriber.id, groupId: group.id } },
+          update: {},
+          create: { subscriberId: subscriber.id, groupId: group.id },
+        });
+      }
+    });
+  }
   redirect("/odberatelia");
 }
 

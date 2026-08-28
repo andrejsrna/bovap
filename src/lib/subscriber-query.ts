@@ -29,3 +29,7 @@ export function subscriberHref(params: Record<string, string | number | undefine
   const query = search.toString();
   return query ? `/odberatelia?${query}` : "/odberatelia";
 }
+
+export function subscriberGroupInput(value: string) {
+  return Array.from(new Set(value.split(",").map((name) => name.trim()).filter(Boolean)));
+}
