@@ -5,6 +5,7 @@ import { createCampaignAction } from "@/lib/actions";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Field, Input, Label, Textarea } from "@/components/ui/Input";
+import RichTextEditor from "@/components/forms/RichTextEditor";
 
 type Card = { title: string; description: string; url: string };
 const blank = (): Card => ({ title: "", description: "", url: "" });
@@ -22,7 +23,7 @@ export default function NewCampaignForm() {
       <Field><Label htmlFor="subject">Predmet emailu</Label><Input id="subject" name="subject" placeholder="Čo príjemca uvidí v schránke" required /></Field>
     </div>
     <Field><Label htmlFor="title">Hlavný titulok</Label><Input id="title" name="title" placeholder="Dôležité informácie pre samosprávy" required /></Field>
-    <Field><Label htmlFor="bodyText">Úvodný text</Label><Textarea id="bodyText" name="bodyText" rows={5} placeholder="Krátke oslovenie a kontext správy…" /></Field>
+    <Field><Label htmlFor="bodyText">Úvodný text</Label><RichTextEditor name="bodyText" rows={5} /></Field>
 
     <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:p-5">
       <div className="mb-4"><h2 className="font-semibold text-gray-900">Obsahové karty</h2><p className="mt-1 text-sm text-gray-500">Každá karta má názov, krátky popis a odkaz. V emaile dostane vlastné tlačidlo.</p></div>
