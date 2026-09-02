@@ -27,11 +27,6 @@ export default function LoginPage() {
             <LoginForm />
           </CardBody>
         </Card>
-
-        <p className="mt-4 text-center text-xs text-gray-400">
-          Prístupové údaje vám nastavíme pri odovzdaní riešenia. V development
-          prostredí: admin@bovap.sk / bovap-admin-2026
-        </p>
       </div>
     </div>
   );
