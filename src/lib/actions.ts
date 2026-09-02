@@ -10,6 +10,7 @@ import { campaignDraftInput } from "@/lib/campaign-edit";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import { subscriberGroupInput } from "@/lib/subscriber-query";
+import { deliverCampaign, targetWhere } from "@/lib/campaign-send";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -125,7 +126,41 @@ export async function sendCampaignTestAction(formData: FormData) {
   redirect(`/kampane/${id}?testSent=${recipients.length}`);
 }
 
-// ---- Odoberatelia ----
+// ---- Ostré odoslanie (newsletter) ----
+
+export async function sendCampaignAction(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const campaign = await prisma.campaign.findUnique({ where: { id } });
+  if (!campaign || campaign.status !== "DRAFT") redirect(`/kampane/${id}`);
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) redirect(`/kampane/${id}?sendError=1`);
+
+    const allActive = formData.get("allActive") === "1";
+    const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
+    const subscribers = await prisma.subscriber.findMany({
+      where: targetWhere(allActive, groupNames),
+      select: { id: true, email: true },
+    });
+   if (!subscribers.length) redirect(`/kampane/${id}?sendError=2`);
+
+  // Zablokovať opätovné odoslanie a vytvoriť príjemcov atomicky
+  await prisma.$transaction([
+    prisma.campaign.update({
+      where: { id },
+      data: { status: "SENDING", recipientsTarget: subscribers.length },
+    }),
+    ...subscribers.map((s) =>
+      prisma.campaignRecipient.create({
+        data: { campaignId: id, subscriberId: s.id, status: "PENDING" },
+      }),
+    ),
+  ]);
+
+  // Odošleme na pozadí — vrátime odpoveď hneď, aby request nespadil na timeout
+  void deliverCampaign(id);
+
+  redirect(`/kampane/${id}?sending=1`);
+}
 
 export async function addSubscriberAction(
   _prev: ActionState,
