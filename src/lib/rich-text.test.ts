@@ -21,4 +21,19 @@ assert.equal(
   sanitizeEmailHtml("prvý\n<strong>druhý</strong>"),
   "prvý<br><strong>druhý</strong>",
 );
+// Entity &nbsp; sa dekódujú (nie dvojité escapovanie na „&amp;nbsp;").
+assert.equal(
+  sanitizeEmailHtml("<p>Ahoj&nbsp;svet</p>"),
+  "<p>Ahoj\u00a0svet</p>",
+);
+// &amp; (doslovný &) ostane správne escapovaný, bez dvojitého escapovania.
+assert.equal(
+  sanitizeEmailHtml("A &amp; B"),
+  "A &amp; B",
+);
+// Číselná entita sa dekóduje.
+assert.equal(
+  sanitizeEmailHtml("<p>100&nbsp;%</p>"),
+  "<p>100\u00a0%</p>",
+);
 console.log("rich-text: OK");

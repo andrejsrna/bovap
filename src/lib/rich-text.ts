@@ -5,8 +5,24 @@ const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char] ?? char));
 
+// Dekóduje HTML entity (&nbsp;, &amp;, &lt;, &#160;, …) naspäť na znaky,
+// aby sa v texte z editora (contentEditable vkladá &nbsp; apod.) neescapovali dvakrát.
+const decodeHtmlEntities = (value: string) =>
+  value.replace(/&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, (entity, body: string) => {
+    if (body[0] === "#") {
+      const isHex = body[1] === "x" || body[1] === "X";
+      const code = parseInt(body.slice(isHex ? 2 : 1), isHex ? 16 : 10);
+      return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : entity;
+    }
+    const named: Record<string, string> = {
+      nbsp: "\u00a0", amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+    };
+    return named[body.toLowerCase()] ?? entity;
+  });
+
 // Konvertuje riadky v texte na <br>, aby sa zachovali v emaile.
-const escapeText = (value: string) => escapeHtml(value).replace(/\n/g, "<br>");
+const escapeText = (value: string) =>
+  escapeHtml(decodeHtmlEntities(value)).replace(/\n/g, "<br>");
 
 export function sanitizeEmailHtml(input: string): string {
   const result: string[] = [];
