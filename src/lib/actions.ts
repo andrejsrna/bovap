@@ -10,7 +10,13 @@ import { campaignDraftInput } from "@/lib/campaign-edit";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import { subscriberGroupInput } from "@/lib/subscriber-query";
-import { deliverCampaign, targetWhere } from "@/lib/campaign-send";
+import { processSendQueue, targetWhere } from "@/lib/campaign-send";
+import { requireAdmin } from "@/lib/auth-guard";
+import {
+  clearLoginAttempts,
+  loginLockedUntil,
+  recordFailedLogin,
+} from "@/lib/login-rate-limit";
 import {
   createSessionToken,
   SESSION_COOKIE_NAME,
@@ -29,15 +35,24 @@ export async function loginAction(
   const password = String(formData.get("password") ?? "");
   if (!email || !password) return { error: "Vyplňte email aj heslo." };
 
+  const requestHeaders = await headers();
+  const ip =
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    "unknown";
+  const locked = await loginLockedUntil(ip, email).catch(() => null);
+  if (locked)
+    return { error: "Príliš veľa pokusov. Skúste znova o 15 minút." };
+
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    await recordFailedLogin(ip, email).catch(() => undefined);
     return { error: "Nesprávny email alebo heslo." };
   }
+  await clearLoginAttempts(ip, email).catch(() => undefined);
 
   const store = await cookies();
   // Preview beží cez HTTP; produkčné mail.bovap.sk cez HTTPS.
   // Secure cookie sa cez HTTP neposiela, takže by proxy vrátila login.
-  const requestHeaders = await headers();
   const isHttps = requestHeaders.get("x-forwarded-proto") === "https";
   store.set(SESSION_COOKIE_NAME, await createSessionToken(user.id), {
     httpOnly: true,
@@ -50,6 +65,7 @@ export async function loginAction(
 }
 
 export async function logoutAction() {
+  await requireAdmin().catch(() => null);
   const store = await cookies();
   store.delete(SESSION_COOKIE_NAME);
   redirect("/login");
@@ -61,6 +77,7 @@ export async function createCampaignAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
@@ -84,6 +101,7 @@ export async function createCampaignAction(
 }
 
 export async function updateCampaignAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const input = campaignDraftInput(formData);
   if (!id || !input) redirect(`/kampane/${id}/upravit?error=1`);
@@ -100,6 +118,7 @@ export async function updateCampaignAction(formData: FormData) {
 }
 
 export async function sendCampaignTestAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   const setting = await prisma.setting.findUnique({ where: { key: "testRecipients" } });
@@ -129,36 +148,51 @@ export async function sendCampaignTestAction(formData: FormData) {
 // ---- Ostré odoslanie (newsletter) ----
 
 export async function sendCampaignAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!id || !apiKey) redirect(`/kampane/${id}?sendError=1`);
+
+  const allActive = formData.get("allActive") === "1";
+  const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
+  const subscribers = await prisma.subscriber.findMany({
+    where: targetWhere(allActive, groupNames),
+    select: { id: true },
+  });
+  if (!subscribers.length) redirect(`/kampane/${id}?sendError=2`);
+
+  // Atómový prechod DRAFT -> SENDING: druhý paralelný request už neprejde
+  // (updateMany vráti count 0, ak kampaň medzitým zmenila stav).
+  const claimed = await prisma.campaign.updateMany({
+    where: { id, status: "DRAFT" },
+    data: { status: "SENDING", recipientsTarget: subscribers.length },
+  });
+  if (claimed.count !== 1) redirect(`/kampane/${id}`);
+
+  // Idempotentné vytvorenie príjemcov (unikát campaignId+subscriberId).
+  await prisma.campaignRecipient.createMany({
+    data: subscribers.map((s) => ({
+      campaignId: id,
+      subscriberId: s.id,
+      status: "PENDING",
+    })),
+    skipDuplicates: true,
+  });
+
+  // Nakopneme prvú dávku fronty; zvyšok dobehne cez retry/cron.
+  // Nečakáme na výsledok – fronta je perzistentná v DB a obnoviteľná.
+  void processSendQueue({ campaignId: id }).catch(() => undefined);
+
+  redirect(`/kampane/${id}?sending=1`);
+}
+
+/** Ručné obnovenie zaseknutej fronty (SENDING s PENDING zvyškami). */
+export async function retrySendAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const campaign = await prisma.campaign.findUnique({ where: { id } });
-  if (!campaign || campaign.status !== "DRAFT") redirect(`/kampane/${id}`);
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) redirect(`/kampane/${id}?sendError=1`);
-
-    const allActive = formData.get("allActive") === "1";
-    const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
-    const subscribers = await prisma.subscriber.findMany({
-      where: targetWhere(allActive, groupNames),
-      select: { id: true, email: true },
-    });
-   if (!subscribers.length) redirect(`/kampane/${id}?sendError=2`);
-
-  // Zablokovať opätovné odoslanie a vytvoriť príjemcov atomicky
-  await prisma.$transaction([
-    prisma.campaign.update({
-      where: { id },
-      data: { status: "SENDING", recipientsTarget: subscribers.length },
-    }),
-    ...subscribers.map((s) =>
-      prisma.campaignRecipient.create({
-        data: { campaignId: id, subscriberId: s.id, status: "PENDING" },
-      }),
-    ),
-  ]);
-
-  // Odošleme na pozadí — vrátime odpoveď hneď, aby request nespadil na timeout
-  void deliverCampaign(id);
-
+  if (!campaign || campaign.status !== "SENDING") redirect(`/kampane/${id}`);
+  void processSendQueue({ campaignId: id }).catch(() => undefined);
   redirect(`/kampane/${id}?sending=1`);
 }
 
@@ -166,6 +200,7 @@ export async function addSubscriberAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  await requireAdmin();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim() || null;
   const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
@@ -200,6 +235,7 @@ export async function addSubscriberAction(
 }
 
 export async function updateSubscriberAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const name = String(formData.get("name") ?? "").trim() || null;
@@ -239,6 +275,7 @@ export async function updateSubscriberAction(formData: FormData) {
 }
 
 export async function deleteSubscriberAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/odberatelia");
   await prisma.subscriber.delete({ where: { id } });
@@ -248,6 +285,7 @@ export async function deleteSubscriberAction(formData: FormData) {
 // ---- Nastavenia ----
 
 export async function saveTestRecipientsAction(formData: FormData) {
+  await requireAdmin();
   const recipients = parseTestRecipients(String(formData.get("testRecipients") ?? ""));
   await prisma.setting.upsert({
     where: { key: "testRecipients" },
@@ -258,12 +296,14 @@ export async function saveTestRecipientsAction(formData: FormData) {
 }
 
 export async function createGroupAction(formData: FormData) {
+  await requireAdmin();
   const name = validGroupName(String(formData.get("name") ?? ""));
   if (name) await prisma.group.upsert({ where: { name }, update: {}, create: { name } });
   redirect("/nastavenia?groupSaved=1");
 }
 
 export async function deleteGroupAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("id") ?? "");
   if (!id) redirect("/nastavenia");
   const count = await prisma.subscriberGroup.count({ where: { groupId: id } });
@@ -276,6 +316,7 @@ export async function updateSettingsAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
+  await requireAdmin();
   const values = {
     senderName: String(formData.get("senderName") ?? "").trim(),
     senderEmail: String(formData.get("senderEmail") ?? "").trim(),

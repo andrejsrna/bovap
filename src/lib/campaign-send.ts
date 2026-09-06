@@ -7,6 +7,8 @@ import { parseCampaignDocuments } from "@/lib/campaign-documents";
 
 const BREVO_URL = "https://api.brevo.com/v3";
 const CONCURRENCY = 5;
+const BATCH_SIZE = 100;
+const BREVO_TIMEOUT_MS = 20_000;
 
 /** Zostaví prisma filter pre cieľových ACTIVE odberateľov (všetci alebo podľa skupín). */
 export function targetWhere(allActive: boolean, groupNames: string[]): object {
@@ -37,97 +39,199 @@ async function getSender(): Promise<{ name: string; email: string }> {
   };
 }
 
+async function fetchBrevo(
+  key: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: boolean; status: number; messageId?: string; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BREVO_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${BREVO_URL}/smtp/email`, {
+      method: "POST",
+      headers: { "api-key": key, "content-type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    let messageId: string | undefined;
+    try {
+      const data: unknown = await res.json();
+      if (data && typeof data === "object") {
+        const id = (data as Record<string, unknown>).messageId;
+        if (typeof id === "string") messageId = id;
+      }
+    } catch {
+      // Brevo nevrátilo JSON – odoslanie prebehlo, len nemáme messageId
+    }
+    return { ok: true, status: res.status, messageId };
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "network-error";
+    return {
+      ok: false,
+      status: 0,
+      error: /abort/i.test(msg) ? "timeout" : msg.slice(0, 180),
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
- * Odošle kampaň cez Brevo transakčný SMTP všetkým PENDING príjemcom.
-
- * Beží na pozadí (fire-and-forget po redirect-e) — takže veľké zoznamy
- * nespadil na timeout server actionu. Kampaň musí byť už SENDING s riadkami
- * CampaignRecipient vytvorenými. Na konci sa kampaň označí SENT (alebo FAILED,
+ * Spracuje dávku PENDING príjemcov kampane (perzistentná fronta v DB).
+ *
+ * Idempotentné + obnoviteľné: po reštarte/deployi stačí zavolať znova
+ * (tlačidlo „Spracovať frontu", cron endpoint alebo retry akcia).
+ * Timeout/chyba siete necháva príjemcu v PENDING na ďalší pokus;
+ * FAILED je len zamietnutie zo strany Brevo API (HTTP 4xx/5xx).
  */
-export async function deliverCampaign(campaignId: string): Promise<void> {
+export async function processSendQueue(opts: {
+  campaignId?: string;
+  batchSize?: number;
+}): Promise<{ processed: number; sent: number; failed: number; pendingLeft: number }> {
   const key = process.env.BREVO_API_KEY;
-  if (!key) return;
+  if (!key) return { processed: 0, sent: 0, failed: 0, pendingLeft: 0 };
+  const batchSize = Math.min(Math.max(opts.batchSize ?? BATCH_SIZE, 1), 500);
   const appUrl = process.env.APP_URL ?? "https://mail.bovap.sk";
-  const sender = await getSender();;
+  const sender = await getSender();
 
-  const campaign = await prisma.campaign.findUnique({
-    where: { id: campaignId },
-    include: {
-      recipients: {
-        where: { status: "PENDING" },
-        include: { subscriber: true },
-      },
-    },
+  const scope = opts.campaignId
+    ? { campaignId: opts.campaignId }
+    : { campaign: { status: "SENDING" } };
+
+  const batch = await prisma.campaignRecipient.findMany({
+    where: { ...scope, status: "PENDING" },
+    orderBy: { id: "asc" },
+    take: batchSize,
+    include: { subscriber: true, campaign: true },
   });
-  if (!campaign) return;
-  const list = campaign.recipients.filter((r) => Boolean(r.subscriber.email));;
-  const total = list.length;
-  if (!total) { await markFinished(campaignId, 0, 0, true); return; }
-  let sent =0, failed =0;
-  let i =0;
+  if (!batch.length) {
+    if (opts.campaignId) await finalizeIfDone(opts.campaignId);
+    else {
+      const sending = await prisma.campaign.findMany({
+        where: { status: "SENDING" },
+        select: { id: true },
+      });
+      for (const c of sending) await finalizeIfDone(c.id);
+    }
+    return { processed: 0, sent: 0, failed: 0, pendingLeft: 0 };
+  }
+
+  let sent = 0;
+  let failed = 0;
+  let i = 0;
   const run = async () => {
     while (true) {
       const idx = i++;
-      if (idx >= total) break;
-      const r = list[idx];;
-      const unsubscribeUrl = `${appUrl}/odhlasenie/${r.subscriber.unsubscribeToken}`;
-      try {
-        const res = await fetch(`${BREVO_URL}/smtp/email`, {
-          method: "POST",
-          headers: { "api-key": key, "content-type": "application/json" },
-          body: JSON.stringify({
-            sender,
-            to: [{ email: r.subscriber.email }],
-            subject: campaign.subject,
-            htmlContent: renderCampaignHtml({
-              title: campaign.title || campaign.subject,
-              bodyText: campaign.bodyText,
-              cards: parseCampaignCards(campaign.cards),
-              documents: parseCampaignDocuments(campaign.documents),
-              unsubscribeUrl,
-            }),
-            tags: ["bovap-newsletter"],
-          }),
-        });
-        if (res.ok) {
-          sent++;
-          await prisma.campaignRecipient.update({
-            where: { id: r.id },
-            data: { status: "SENT", sentAt: new Date(), error: null },
-          });
-        } else {
-          failed++;
-          await prisma.campaignRecipient.update({
-            where: { id: r.id },
-            data: { status: "FAILED", error: `HTTP ${res.status}` },
-          });
-        }
-      } catch {
+      if (idx >= batch.length) break;
+      const r = batch[idx];
+      if (!r.subscriber || !r.subscriber.email) {
         failed++;
         await prisma.campaignRecipient.update({
           where: { id: r.id },
-          data: { status: "FAILED", error: "timeout" },
+          data: { status: "FAILED", error: "missing-email" },
+        });
+        continue;
+      }
+      const unsubscribeUrl = `${appUrl}/odhlasenie/${r.subscriber.unsubscribeToken}`;
+      const result = await fetchBrevo(key, {
+        sender,
+        to: [{ email: r.subscriber.email }],
+        subject: r.campaign.subject,
+        htmlContent: renderCampaignHtml({
+          title: r.campaign.title || r.campaign.subject,
+          bodyText: r.campaign.bodyText,
+          cards: parseCampaignCards(r.campaign.cards),
+          documents: parseCampaignDocuments(r.campaign.documents),
+          unsubscribeUrl,
+        }),
+        tags: ["bovap-newsletter"],
+        headers: {
+          "X-Mailin-custom": JSON.stringify({
+            campaignId: r.campaignId,
+            recipientId: r.id,
+          }),
+        },
+      });
+      if (result.ok) {
+        sent++;
+        await prisma.campaignRecipient.update({
+          where: { id: r.id },
+          data: {
+            status: "SENT",
+            sentAt: new Date(),
+            error: null,
+            messageId: result.messageId ?? undefined,
+          },
+        });
+      } else if (result.status === 0) {
+        // Timeout / sieť – ponechať PENDING na retry, len zaznamenať pokus.
+        await prisma.campaignRecipient.update({
+          where: { id: r.id },
+          data: { error: result.error ?? "timeout" },
+        });
+      } else {
+        failed++;
+        await prisma.campaignRecipient.update({
+          where: { id: r.id },
+          data: { status: "FAILED", error: `HTTP ${result.status}` },
         });
       }
     }
   };
   await Promise.all(Array.from({ length: CONCURRENCY }, run));
-  await markFinished(campaignId, sent, failed, false);
+
+  const touchedIds: string[] = Array.from(
+    new Set(batch.map((r) => r.campaignId)),
+  );
+  for (const campaignId of touchedIds) await finalizeIfDone(campaignId);
+
+  const pendingLeft = await prisma.campaignRecipient.count({
+    where: { ...scope, status: "PENDING" },
+  });
+  return { processed: batch.length, sent, failed, pendingLeft };
 }
 
-async function markFinished(
-  campaignId: string,
-  sent: number,
-  failed: number,
-  noneQueued: boolean,
-): Promise<void> {
+/** Prepočíta počty z DB a uzavrie kampaň, ak už nezostáva PENDING. */
+async function finalizeIfDone(campaignId: string) {
+  const [pending, sent, failed, campaign] = await Promise.all([
+    prisma.campaignRecipient.count({
+      where: { campaignId, status: "PENDING" },
+    }),
+    prisma.campaignRecipient.count({
+      where: {
+        campaignId,
+        status: { in: ["SENT", "DELIVERED", "OPENED", "CLICKED"] },
+      },
+    }),
+    prisma.campaignRecipient.count({ where: { campaignId, status: "FAILED" } }),
+    prisma.campaign.findUnique({ where: { id: campaignId } }),
+  ]);
+  if (!campaign || campaign.status !== "SENDING") return;
+  if (pending > 0) {
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { recipientsSent: sent, recipientsFailed: failed },
+    });
+    return;
+  }
   await prisma.campaign.update({
     where: { id: campaignId },
     data: {
-      status: noneQueued || (sent === 0 && failed > 0) ? "FAILED" : "SENT",
+      status: sent === 0 && failed > 0 ? "FAILED" : "SENT",
       sentAt: new Date(),
       recipientsSent: sent,
-      statsBounced: failed,
+      recipientsFailed: failed,
     },
   });
+}
+
+/**
+ * Kompatibilná obálka: odošle celú frontu kampane po dávkach.
+ * Ponechaná pre existujúce volania; nové cesty používajú processSendQueue.
+ */
+export async function deliverCampaign(campaignId: string): Promise<void> {
+  for (let guard = 0; guard < 100; guard++) {
+    const { pendingLeft } = await processSendQueue({ campaignId });
+    if (pendingLeft === 0) break;
+  }
 }

@@ -60,9 +60,13 @@ model Campaign {
   status           String              @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
   recipientsTarget Int                 @default(0)
   recipientsSent   Int                 @default(0)
+  recipientsFailed Int                 @default(0)
+  statsDelivered   Int                 @default(0)
   statsOpened      Int                 @default(0)
   statsClicked     Int                 @default(0)
-  statsBounced     Int                 @default(0)
+  statsBounced     Int                 @default(0) // legacy súčet; nové: soft/hard nižšie
+  statsSoftBounced Int                 @default(0)
+  statsHardBounced Int                 @default(0)
   statsUnsub       Int                 @default(0)
   scheduledAt      DateTime?
   sentAt           DateTime?
@@ -76,17 +80,30 @@ model CampaignRecipient {
   subscriberId String
   status       String    @default("PENDING") // PENDING | SENT | DELIVERED | OPENED | CLICKED | BOUNCED | FAILED
   error        String?
+  messageId    String?
   sentAt       DateTime?
+  deliveredAt  DateTime?
+  bouncedAt    DateTime?
   openedAt     DateTime?
   clickedAt    DateTime?
   campaign     Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   subscriber   Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
 
+  @@unique([campaignId, subscriberId])
   @@index([campaignId])
+  @@index([messageId])
 }
 
 model Setting {
   key   String @id
   value String
   // senderName, senderEmail, footerText, templateBody, unsubscribeUrl...
+}
+
+// Rate limit prihlásenia (DB – prežije reštart, funguje pre viac inštancií).
+model LoginAttempt {
+  key         String    @id // "ip|email"
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
 }

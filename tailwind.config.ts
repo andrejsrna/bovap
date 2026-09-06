@@ -1,6 +1,8 @@
 import type { Config } from "tailwindcss";
 import defaultTheme from "tailwindcss/defaultTheme";
 import colors from "tailwindcss/colors";
+import typography from "@tailwindcss/typography";
+import forms from "@tailwindcss/forms";
 
 // Sailboat UI konfigurácia: https://sailboatui.com/docs/getting-started/quick-start/
 const config: Config = {
@@ -16,7 +18,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography"), require("@tailwindcss/forms")],
+  plugins: [typography, forms],
 };
 
 export default config;

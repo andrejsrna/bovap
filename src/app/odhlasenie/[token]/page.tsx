@@ -7,6 +7,13 @@ export const metadata: Metadata = {
   title: "Odhlásenie z odberu – BOVAP",
 };
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  const head = local?.slice(0, 1) ?? "*";
+  return `${head}***@${domain}`;
+}
+
 export default async function OdhlaseniePage({
   params,
   searchParams,
@@ -21,6 +28,8 @@ export default async function OdhlaseniePage({
   });
 
   const done = sp.done === "1";
+  // Token sa môže dostať do histórie/logov – email zobrazujeme len maskovaný.
+  const masked = subscriber ? maskEmail(subscriber.email) : "";
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center px-4">
@@ -44,7 +53,7 @@ export default async function OdhlaseniePage({
                 <p className="mt-2 text-sm text-gray-500">
                   Adresa{" "}
                   <span className="font-medium text-gray-700">
-                    {subscriber.email}
+                    {masked}
                   </span>{" "}
                   už nebude dostávať naše správy. Ďakujeme.
                 </p>
@@ -57,7 +66,7 @@ export default async function OdhlaseniePage({
                 <p className="mt-2 text-sm text-gray-500">
                   Naozaj chcete odhlásiť adresu{" "}
                   <span className="font-medium text-gray-700">
-                    {subscriber.email}
+                    {masked}
                   </span>{" "}
                   z odberu správ OZ BOVAP?
                 </p>

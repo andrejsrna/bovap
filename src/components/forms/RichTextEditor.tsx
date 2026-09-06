@@ -2,16 +2,29 @@
 
 import { useRef, useEffect } from "react";
 
-const tool = (label: string, title: string, onMouseDown: (e: React.MouseEvent) => void) => (
-  <button
-    type="button"
-    title={title}
-    onMouseDown={(e) => { e.preventDefault(); onMouseDown(e); }}
-    className="rounded-md px-2 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-200"
-  >
-    {label}
-  </button>
-);
+function ToolButton({
+  label,
+  title,
+  onPress,
+}: {
+  label: string;
+  title: string;
+  onPress: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onPress();
+      }}
+      className="rounded-md px-2 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-200"
+    >
+      {label}
+    </button>
+  );
+}
 
 export default function RichTextEditor({ name, defaultValue = "", rows = 6 }: {
   name: string; defaultValue?: string; rows?: number;
@@ -39,16 +52,18 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6 }: {
     sync();
   };
 
+  const insertLink = () => {
+    const url = window.prompt("URL odkazu (https://…)");
+    if (url) exec("createLink", url);
+  };
+
   return (
     <div>
       <div className="mb-1 flex items-center gap-1 rounded-lg border border-gray-200 bg-gray-50 px-2 py-1">
-        {tool("B", "Tučné", () => exec("bold"))}
-        {tool("I", "Kurzíva", () => exec("italic"))}
-        {tool("• List", "Zoznam", () => exec("insertUnorderedList"))}
-        {tool("🔗 Odkaz", "Vložiť odkaz", () => {
-          const url = window.prompt("URL odkazu (https://…)");
-          if (url) exec("createLink", url);
-        })}
+        <ToolButton label="B" title="Tučné" onPress={() => exec("bold")} />
+        <ToolButton label="I" title="Kurzíva" onPress={() => exec("italic")} />
+        <ToolButton label="• List" title="Zoznam" onPress={() => exec("insertUnorderedList")} />
+        <ToolButton label="🔗 Odkaz" title="Vložiť odkaz" onPress={insertLink} />
       </div>
       <div
         ref={editorRef}
