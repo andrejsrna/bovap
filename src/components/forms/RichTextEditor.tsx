@@ -26,8 +26,8 @@ function ToolButton({
   );
 }
 
-export default function RichTextEditor({ name, defaultValue = "", rows = 6 }: {
-  name: string; defaultValue?: string; rows?: number;
+export default function RichTextEditor({ name, defaultValue = "", rows = 6, onChange }: {
+  name: string; defaultValue?: string; rows?: number; onChange?: (value: string) => void;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hiddenRef = useRef<HTMLInputElement>(null);
@@ -35,6 +35,7 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6 }: {
   const sync = () => {
     if (hiddenRef.current && editorRef.current) {
       hiddenRef.current.value = editorRef.current.innerHTML;
+      onChange?.(editorRef.current.innerHTML);
     }
   };
 

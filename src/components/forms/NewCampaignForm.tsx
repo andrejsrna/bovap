@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { createCampaignAction } from "@/lib/actions";
 import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
-import { Field, Input, Label, Textarea } from "@/components/ui/Input";
+import { Field, Input, Label } from "@/components/ui/Input";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 
 type Card = { title: string; description: string; url: string };
@@ -30,7 +30,7 @@ export default function NewCampaignForm() {
       <div className="space-y-4">
         {cards.map((card, index) => <div key={index} className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between"><strong className="text-sm text-gray-700">Karta {index + 1}</strong>{cards.length > 1 ? <button type="button" onClick={() => setCards((items) => items.filter((_, i) => i !== index))} className="text-sm font-medium text-red-600 hover:text-red-700">Odstrániť</button> : null}</div>
-          <div className="space-y-3"><Input value={card.title} onChange={(e) => update(index, "title", e.target.value)} placeholder="Názov karty" /><Textarea value={card.description} onChange={(e) => update(index, "description", e.target.value)} rows={3} placeholder="Stručný popis" /><Input value={card.url} onChange={(e) => update(index, "url", e.target.value)} type="url" placeholder="https://… alebo PDF nižšie" /><div><Label htmlFor={`pdf-${index}`} className="text-xs">PDF dokument (voliteľné, max. 10 MB)</Label><Input id={`pdf-${index}`} name={`pdf-${index}`} type="file" accept="application/pdf,.pdf" /></div></div>
+          <div className="space-y-3"><Input value={card.title} onChange={(e) => update(index, "title", e.target.value)} placeholder="Názov karty" /><div><Label>Popis karty</Label><RichTextEditor name={`card-description-${index}`} defaultValue={card.description} rows={3} onChange={(value) => update(index, "description", value)} /></div><Input value={card.url} onChange={(e) => update(index, "url", e.target.value)} type="url" placeholder="https://… alebo PDF nižšie" /><div><Label htmlFor={`pdf-${index}`} className="text-xs">PDF dokument (voliteľné, max. 10 MB)</Label><Input id={`pdf-${index}`} name={`pdf-${index}`} type="file" accept="application/pdf,.pdf" /></div></div>
         </div>)}
       </div>
       <button type="button" onClick={() => setCards((items) => [...items, blank()])} className="mt-4 text-sm font-semibold text-primary-700 hover:text-primary-800">+ Pridať kartu</button>
