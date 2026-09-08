@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CAMPAIGN_STATUS, formatDate } from "@/lib/utils";
+import { duplicateCampaignAction } from "@/lib/actions";
 
 export default async function KampanePage() {
   const campaigns = await prisma.campaign.findMany({
@@ -78,12 +79,18 @@ export default async function KampanePage() {
                     <td className="px-6 py-4">{c._count.recipients}</td>
                     <td className="px-6 py-4">{formatDate(c.createdAt)}</td>
                     <td className="px-6 py-4 text-right">
-                      <Link
-                        href={`/kampane/${c.id}`}
-                        className="font-medium text-primary-700 hover:text-primary-800"
-                      >
-                        Detail
-                      </Link>
+                      <div className="flex justify-end gap-3">
+                        <Link
+                          href={`/kampane/${c.id}`}
+                          className="font-medium text-primary-700 hover:text-primary-800"
+                        >
+                          Detail
+                        </Link>
+                        <form action={duplicateCampaignAction}>
+                          <input type="hidden" name="id" value={c.id} />
+                          <button className="font-medium text-primary-700 hover:text-primary-800">Duplikovať</button>
+                        </form>
+                      </div>
                     </td>
                   </tr>
                 );

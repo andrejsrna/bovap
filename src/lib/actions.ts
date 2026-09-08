@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import { campaignDraftInput } from "@/lib/campaign-edit";
+import { duplicateCampaignData } from "@/lib/campaign-duplicate";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import { subscriberGroupInput } from "@/lib/subscriber-query";
@@ -115,6 +116,27 @@ export async function updateCampaignAction(formData: FormData) {
     redirect(`/kampane/${id}/upravit?uploadError=1`);
   }
   redirect(`/kampane/${id}?saved=1`);
+}
+
+/** Vytvorí nový koncept s rovnakým obsahom; príjemcovia a výsledky sa nekopírujú. */
+export async function duplicateCampaignAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  const source = await prisma.campaign.findUnique({
+    where: { id },
+    select: {
+      name: true,
+      subject: true,
+      title: true,
+      bodyText: true,
+      cards: true,
+      documents: true,
+      imageUrl: true,
+    },
+  });
+  if (!source) redirect("/kampane");
+  const campaign = await prisma.campaign.create({ data: duplicateCampaignData(source) });
+  redirect(`/kampane/${campaign.id}?duplicated=1`);
 }
 
 export async function sendCampaignTestAction(formData: FormData) {

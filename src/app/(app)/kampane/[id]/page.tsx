@@ -15,7 +15,7 @@ function pct(part: number, whole: number): string {
   return `${Math.round((part / whole) * 100)} %`;
 }
 
-export default async function KampanDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; testSent?: string; testError?: string; sending?: string; sendError?: string }> }) {
+export default async function KampanDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; duplicated?: string; testSent?: string; testError?: string; sending?: string; sendError?: string }> }) {
   const { id } = await params;
   const query = await searchParams;
   const [campaign, testSetting, groups, totalActive, byStatus, problemRecipients] = await Promise.all([
@@ -47,6 +47,7 @@ export default async function KampanDetailPage({ params, searchParams }: { param
   return <div className="mx-auto max-w-5xl space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-4"><div><Link href="/kampane" className="text-sm font-medium text-primary-600">← Späť na kampane</Link><h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">{campaign.name}</h1></div><div className="flex items-center gap-3"><Badge tone={status.tone}>{status.label}</Badge>{campaign.status === "DRAFT" ? <ButtonLink href={`/kampane/${campaign.id}/upravit`}>Upraviť obsah</ButtonLink> : null}</div></div>
     {query.saved ? <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Zmeny kampane boli uložené.</p> : null}
+    {query.duplicated ? <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Kópia kampane je pripravená ako koncept. Skontrolujte ju pred odoslaním.</p> : null}
     {query.testSent ? <p className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">Test odoslaný na {query.testSent} testovacích adries.</p> : null}
     {query.testError ? <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">Test sa neodoslal. Skontrolujte testovacie adresy a odosielateľa v Nastaveniach.</p> : null}
     {query.sending ? <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Newsletter sa odosiela. Po dokončení sa stav zmení na „Odoslaná„.</p> : null}
