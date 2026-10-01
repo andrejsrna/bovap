@@ -17,7 +17,8 @@ const emailHtml = (value: string) =>
   sanitizeEmailHtml(value)
     .replace(/<p>/g, '<p style="margin:0 0 12px">')
     .replace(/<(ul|ol)>/g, '<$1 style="margin:0 0 12px;padding-left:22px">')
-    .replace(/<li>/g, '<li style="margin:0 0 6px">');
+    .replace(/<li>/g, '<li style="margin:0 0 6px">')
+    .replace(/<a href="([^"]*)">/g, '<a href="$1" style="color:#1f668d;text-decoration:underline">');
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
