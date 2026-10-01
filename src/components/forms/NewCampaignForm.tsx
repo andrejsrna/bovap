@@ -7,13 +7,16 @@ import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Field, Input, Label } from "@/components/ui/Input";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 
-type Card = { title: string; description: string; url: string };
+type Card = { title: string; description: string; url: string; file?: { type: "PDF"; size: number } };
 const blank = (): Card => ({ title: "", description: "", url: "" });
 
 export default function NewCampaignForm() {
   const [state, formAction, pending] = useActionState(createCampaignAction, undefined);
   const [cards, setCards] = useState<Card[]>([blank()]);
-  const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => i === index ? { ...card, [key]: value } : card));
+  const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => {
+    if (i !== index) return card;
+    return key === "url" ? { title: card.title, description: card.description, url: value } : { ...card, [key]: value };
+  }));
 
   return <form action={formAction} encType="multipart/form-data" className="space-y-6">
     {state?.error ? <ErrorAlert message={state.error} /> : null}

@@ -53,11 +53,13 @@ export async function uploadCampaignPdf(file: File, campaignId: string) {
   return `${publicUrl}/${encodedKey}`;
 }
 
-export async function attachPdfLinks(cards: { title: string; description: string; url: string }[], formData: FormData, campaignId: string) {
+export const pdfFileInfo = (file: File) => ({ type: "PDF" as const, size: file.size });
+
+export async function attachPdfLinks(cards: { title: string; description: string; url: string; file?: { type: "PDF"; size: number } }[], formData: FormData, campaignId: string) {
   const result = [...cards];
   for (let index = 0; index < result.length; index++) {
     const file = formData.get(`pdf-${index}`);
-    if (file instanceof File && file.size) result[index] = { ...result[index], url: await uploadCampaignPdf(file, campaignId) };
+    if (file instanceof File && file.size) result[index] = { ...result[index], url: await uploadCampaignPdf(file, campaignId), file: pdfFileInfo(file) };
   }
   return result;
 }

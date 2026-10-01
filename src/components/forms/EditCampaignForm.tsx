@@ -6,14 +6,18 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input, Label } from "@/components/ui/Input";
 import RichTextEditor from "@/components/forms/RichTextEditor";
 
-type Card = { title: string; description: string; url: string };
+type Card = { title: string; description: string; url: string; file?: { type: "PDF"; size: number } };
 type Document = { name: string; url: string };
 type Initial = { id: string; name: string; subject: string; title: string; bodyText: string; cards: Card[]; documents: Document[] };
 const blank = (): Card => ({ title: "", description: "", url: "" });
 
 export default function EditCampaignForm({ initial }: { initial: Initial }) {
   const [cards, setCards] = useState<Card[]>(initial.cards.length ? initial.cards : [blank()]);
-  const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => i === index ? { ...card, [key]: value } : card));
+  const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => {
+    if (i !== index) return card;
+    // Ručne zmenený odkaz už nemusí patriť k nahranému súboru, preto metaúdaje zahodíme.
+    return key === "url" ? { title: card.title, description: card.description, url: value } : { ...card, [key]: value };
+  }));
   return <form action={updateCampaignAction} encType="multipart/form-data" className="space-y-6">
     <input type="hidden" name="id" value={initial.id} /><input type="hidden" name="cards" value={JSON.stringify(cards.filter((card) => card.title || card.description || card.url))} /><input type="hidden" name="documents" value={JSON.stringify(initial.documents)} />
     <div className="grid gap-4 sm:grid-cols-2"><Field><Label htmlFor="name">Názov kampane</Label><Input id="name" name="name" defaultValue={initial.name} required /></Field><Field><Label htmlFor="subject">Predmet emailu</Label><Input id="subject" name="subject" defaultValue={initial.subject} required /></Field></div>
