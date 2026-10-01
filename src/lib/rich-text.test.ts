@@ -70,4 +70,13 @@ assert.equal(
   sanitizeEmailHtml("<h4><p>A</p><p>B</p></h4><p>C</p>"),
   "<p>A</p><p>B</p><p>C</p>",
 );
+// Excel/Word: tabuľka sa zmení na riadky, bunky sa nezlepia a fonty/farby zmiznú.
+assert.equal(
+  sanitizeEmailHtml('<table><tr><td style="font-family:Calibri">Názov</td><td>Cena</td></tr><tr><td>A</td><td>10 €</td></tr></table>'),
+  "Názov Cena<br>A 10 €",
+);
+assert.equal(
+  sanitizeEmailHtml('<span style="font-family:&quot;Times New Roman&quot;;font-size:16px"><font face="Arial" color="#000">Text</font></span>'),
+  "Text",
+);
 console.log("rich-text: OK");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { sanitizeEmailHtml } from "@/lib/rich-text";
 
 function ToolButton({
   label,
@@ -72,6 +73,16 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6, onCh
         role="textbox"
         aria-multiline="true"
         onInput={sync}
+        onPaste={(event) => {
+          // Excel/Word/web vkladajú fonty, farby a tabuľky: vložíme len email-safe HTML.
+          const html = event.clipboardData.getData("text/html");
+          const text = event.clipboardData.getData("text/plain");
+          if (!html && !text) return;
+          event.preventDefault();
+          const clean = html ? sanitizeEmailHtml(html) : sanitizeEmailHtml(text);
+          document.execCommand("insertHTML", false, clean);
+          sync();
+        }}
         style={{ minHeight: `${rows * 24}px` }}
         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 [&_a]:text-primary-700 [&_a]:underline"
       />

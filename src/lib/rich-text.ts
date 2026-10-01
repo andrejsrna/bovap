@@ -36,7 +36,9 @@ const tidy = (html: string) =>
     .replace(/<br>(?=<(?:\/?(?:p|ul|ol|li))\b)/g, "") // <br> pred blokom je navyše
     .replace(new RegExp(`\\s+(?=<\\/?${BLOCK}>)`, "g"), "")
     .replace(new RegExp(`(<\\/?${BLOCK}>)\\s+`, "g"), "$1")
-    .replace(/(?:<br>)+$/, "");
+    .replace(/(?:<br>)+$/, "")
+    .replace(/ +(?=<br>)/g, "")
+    .replace(/ +$/, "");
 
 export function sanitizeEmailHtml(input: string): string {
   const isHtml = /<(?:p|div|ul|ol|li|h[1-6]|br)\b/i.test(input);
@@ -56,6 +58,9 @@ export function sanitizeEmailHtml(input: string): string {
     if (!ALLOWED_TAGS.has(tag)) {
       // Nepovolená značka – vyhodíme ju (text okolo už bol escapovaný).
       if (isClosing && LINE_BREAK_TAGS.has(tag)) result.push("<br>");
+      // Tabuľka z Excelu: bunky oddelíme medzerou, riadky novým riadkom.
+      else if (isClosing && (tag === "td" || tag === "th")) result.push(" ");
+      else if (isClosing && tag === "tr") result.push("<br>");
     } else if (isClosing) {
       if (stack[stack.length - 1] === tag) {
         result.push(`</${tag}>`);
