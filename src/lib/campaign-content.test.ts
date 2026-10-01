@@ -31,14 +31,13 @@ const pdfUrl = "https://s3.synthbit.sk/bovap/kampane/x/vyzva.pdf";
 assert.deepEqual(parseCampaignCards(JSON.stringify([{ title: "A", description: "", url: pdfUrl, file: { type: "PDF", size: 372720 } }])), [{ title: "A", description: "", url: pdfUrl, file: { type: "PDF", size: 372720 } }]);
 assert.deepEqual(parseCampaignCards(JSON.stringify([{ title: "A", description: "", url: pdfUrl, file: { type: "EXE", size: -1 } }])), [{ title: "A", description: "", url: pdfUrl }]);
 
-// Karta s PDF: namiesto „Pozrieť podrobnosti“ typ a veľkosť, klikateľné tlačidlo.
+// Karta s PDF: ostáva odkaz „Pozrieť podrobnosti →“, za ním typ a veľkosť (všetko v jednom odkaze).
 const pdfCard = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Výzva", description: "", url: pdfUrl, file: { type: "PDF", size: 372720 } }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
-assert.match(pdfCard, /Stiahnuť PDF · 364 KB/);
-assert.doesNotMatch(pdfCard, /Pozrieť podrobnosti/);
-assert.match(pdfCard, new RegExp(`<a href="${pdfUrl.replace(/[.]/g, "\\.")}"[^>]*display:block[^>]*>Stiahnuť PDF`));
+assert.match(pdfCard, new RegExp(`<a href="${pdfUrl.replace(/[.]/g, "\\.")}"[^>]*>Pozrieť podrobnosti&nbsp; →<span[^>]*> · PDF, 364 KB</span></a>`));
+assert.doesNotMatch(pdfCard, /Stiahnuť PDF|display:block/);
 // Starší PDF odkaz bez uložených metaúdajov: typ sa pozná z URL, veľkosť sa nevymýšľa.
 const legacyPdf = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Výzva", description: "", url: pdfUrl }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
-assert.match(legacyPdf, /Stiahnuť PDF →/);
+assert.match(legacyPdf, /Pozrieť podrobnosti&nbsp; →<span[^>]*> · PDF<\/span>/);
 // Obyčajný odkaz ostáva nezmenený.
 assert.match(renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Web", description: "", url: "https://bovap.sk" }], unsubscribeUrl: "https://bovap.sk/odhlasenie" }), /Pozrieť podrobnosti/);
 // Karta bez odkazu nemá prázdny href ani výzvu na kliknutie.

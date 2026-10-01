@@ -47,11 +47,13 @@ export function renderCampaignHtml({ title, bodyText, cards, documents = [], uns
   const cardAction = (card: CampaignCard) => {
     if (!card.url) return "";
     const href = escapeHtml(card.url);
+    // Odkaz ostáva rovnaký pre všetky karty; PDF len doplní typ a veľkosť za text.
+    let meta = "";
     if (card.file || isPdfUrl(card.url)) {
       const size = card.file ? formatFileSize(card.file.size) : "";
-      return `<a href="${href}" style="display:block;background:#eaf3f9;border:1px solid #c9dfec;border-radius:10px;color:#1f668d;font-size:14px;font-weight:700;padding:12px 15px;text-decoration:none">${size ? `Stiahnuť PDF · ${size}` : "Stiahnuť PDF →"}</a>`;
+      meta = `<span style="color:#6c7d88;font-weight:400"> · PDF${size ? `, ${size}` : ""}</span>`;
     }
-    return `<a href="${href}" style="color:#1f668d;font-size:14px;font-weight:700;text-decoration:none">Pozrieť podrobnosti&nbsp; →</a>`;
+    return `<a href="${href}" style="color:#1f668d;font-size:14px;font-weight:700;text-decoration:none">Pozrieť podrobnosti&nbsp; →${meta}</a>`;
   };
   const items = cards.map((card, index) => `<tr><td style="padding:0 0 14px"><table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#ffffff;border:1px solid #dce4ed;border-radius:14px"><tr><td width="48" valign="top" style="padding:22px 0 18px 20px"><div style="width:28px;height:28px;border-radius:14px;background:#e8eff5;color:#1f4e6d;font-size:13px;font-weight:700;line-height:28px;text-align:center">${index + 1}</div></td><td style="padding:20px 20px 18px 12px">${card.url ? `<a href="${escapeHtml(card.url)}" style="color:#173b52;font-size:18px;font-weight:700;line-height:1.35;text-decoration:none">${escapeHtml(card.title)}</a>` : `<span style="color:#173b52;font-size:18px;font-weight:700;line-height:1.35">${escapeHtml(card.title)}</span>`}${card.description ? `<div style="color:#526574;font-size:15px;line-height:1.65;margin:8px 0 14px">${emailHtml(card.description)}</div>` : ""}${cardAction(card)}</td></tr></table></td></tr>`).join("");
   const documentItems = documents.map((document) => `<tr><td style="padding:0 0 8px"><a href="${escapeHtml(document.url)}" style="display:block;border:1px solid #dce4ed;border-radius:10px;color:#1f668d;font-size:14px;font-weight:700;padding:13px 15px;text-decoration:none">PDF · ${escapeHtml(document.name)}</a></td></tr>`).join("");
