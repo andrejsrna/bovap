@@ -18,4 +18,5 @@ console.log("campaign-content: OK");
 // Odseky v texte nesmú byť vnorené do ďalšieho <p> (rozbíja zobrazenie v emailových klientoch).
 const paragraphs = renderCampaignHtml({ title: "T", bodyText: "<p>Prvý</p><p>Druhý</p>", cards: [], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
 assert.doesNotMatch(paragraphs, /<p[^>]*>(?:(?!<\/p>).)*<p>/);
-assert.match(paragraphs, /<p>Prvý<\/p><p>Druhý<\/p>/);
+// Odseky majú explicitný okraj, aby ich emailové programy nerozťahovali podľa vlastných predvolieb.
+assert.match(paragraphs, /<p style="margin:0 0 12px">Prvý<\/p><p style="margin:0 0 12px">Druhý<\/p>/);

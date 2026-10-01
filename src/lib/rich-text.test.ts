@@ -36,18 +36,38 @@ assert.equal(
   sanitizeEmailHtml("<p>100&nbsp;%</p>"),
   "<p>100\u00a0%</p>",
 );
-console.log("rich-text: OK");
 // Editor (Enter) a vložený text vytvárajú <div>/<h1>: riadky sa nesmú zlepiť.
 assert.equal(
   sanitizeEmailHtml("<div>Prvý riadok</div><div>Druhý riadok</div>"),
-  "Prvý riadok<br>Druhý riadok<br>",
+  "Prvý riadok<br>Druhý riadok",
 );
 assert.equal(
   sanitizeEmailHtml('<h1 style="font-size:12px">Nadpis</h1><p>Text</p>'),
-  "Nadpis<br><p>Text</p>",
+  "Nadpis<p>Text</p>",
 );
 // Atribúty zo vloženého obsahu (style, data-*) sa zahodia.
 assert.equal(
   sanitizeEmailHtml('<p data-path-to-node="6" style="color:red"><b data-x="1">Ahoj</b></p>'),
   "<p><b>Ahoj</b></p>",
 );
+// Word/web vkladá \r\n medzi značky: v HTML je to obyčajná medzera, nie nový riadok.
+assert.equal(
+  sanitizeEmailHtml('<p><span>✅</span>\r\nmonitoring a správy,<o:p></o:p></p>\r\n\r\n<p><span>✅</span>\r\npodpora</p>'),
+  "<p>✅ monitoring a správy,</p><p>✅ podpora</p>",
+);
+// Prázdne odseky (<p><br></p>, <p>&nbsp;</p>) sa zahodia, nerobia diery v emaile.
+assert.equal(
+  sanitizeEmailHtml("<p>A</p><p><br></p><p>&nbsp;</p><p>B</p>"),
+  "<p>A</p><p>B</p>",
+);
+// <p> v <li> sa rozbalí, inak majú položky zoznamu navyše okraje.
+assert.equal(
+  sanitizeEmailHtml("<ul><li><p>Jedna</p></li><li><p>Dva</p></li></ul>"),
+  "<ul><li>Jedna</li><li>Dva</li></ul>",
+);
+// Nadpis s odsekmi vo vnútri nepridá za posledný odsek ďalší <br>.
+assert.equal(
+  sanitizeEmailHtml("<h4><p>A</p><p>B</p></h4><p>C</p>"),
+  "<p>A</p><p>B</p><p>C</p>",
+);
+console.log("rich-text: OK");

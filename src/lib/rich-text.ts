@@ -22,11 +22,24 @@ const decodeHtmlEntities = (value: string) =>
     return named[body.toLowerCase()] ?? entity;
   });
 
-// Konvertuje riadky v texte na <br>, aby sa zachovali v emaile.
-const escapeText = (value: string) =>
-  escapeHtml(decodeHtmlEntities(value)).replace(/\n/g, "<br>");
+// Obyčajný text: riadky sa zachovajú ako <br>. V HTML (vložené z Wordu/webu) sú
+// zalomenia medzi značkami len medzera, nie nový riadok.
+const escapeText = (value: string, isHtml: boolean) => {
+  const text = escapeHtml(decodeHtmlEntities(value));
+  return isHtml ? text.replace(/\s*[\r\n]+\s*/g, " ") : text.replace(/\r?\n/g, "<br>");
+};
+
+const BLOCK = "(?:p|ul|ol|li)";
+const tidy = (html: string) =>
+  html
+    .replace(/<p>(?:\s|\u00a0|<br>)*<\/p>/g, "") // prázdne odseky = diery v emaile
+    .replace(/<br>(?=<(?:\/?(?:p|ul|ol|li))\b)/g, "") // <br> pred blokom je navyše
+    .replace(new RegExp(`\\s+(?=<\\/?${BLOCK}>)`, "g"), "")
+    .replace(new RegExp(`(<\\/?${BLOCK}>)\\s+`, "g"), "$1")
+    .replace(/(?:<br>)+$/, "");
 
 export function sanitizeEmailHtml(input: string): string {
+  const isHtml = /<(?:p|div|ul|ol|li|h[1-6]|br)\b/i.test(input);
   const result: string[] = [];
   const stack: string[] = [];
   const tagRe = /<\/?([a-zA-Z][a-zA-Z0-9-]*)([^>]*)>/g;
@@ -34,7 +47,7 @@ export function sanitizeEmailHtml(input: string): string {
   let match: RegExpExecArray | null;
 
   while ((match = tagRe.exec(input)) !== null) {
-    if (match.index > last) result.push(escapeText(input.slice(last, match.index)));
+    if (match.index > last) result.push(escapeText(input.slice(last, match.index), isHtml));
     const full = match[0];
     const tag = match[1].toLowerCase();
     const attrs = match[2];
@@ -57,6 +70,8 @@ export function sanitizeEmailHtml(input: string): string {
         result.push(`<a href="${escapeHtml(href)}">`);
         stack.push("a");
       }
+    } else if (tag === "p" && stack.includes("li")) {
+      // <p> v <li> (z Wordu/AI) pridáva položkám okraje – rozbalíme ho.
     } else {
       result.push(`<${tag}>`);
       stack.push(tag);
@@ -64,7 +79,7 @@ export function sanitizeEmailHtml(input: string): string {
     last = match.index + full.length;
   }
 
-  if (last < input.length) result.push(escapeText(input.slice(last)));
+  if (last < input.length) result.push(escapeText(input.slice(last), isHtml));
   while (stack.length) result.push(`</${stack.pop()}>`);
-  return result.join("");
+  return tidy(result.join(""));
 }
