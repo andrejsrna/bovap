@@ -15,3 +15,7 @@ assert.match(formattedCard, /<strong>Dôležité<\/strong>/);
 assert.match(formattedCard, /Bezpečný odkaz/);
 assert.doesNotMatch(formattedCard, /<script>|javascript:/);
 console.log("campaign-content: OK");
+// Odseky v texte nesmú byť vnorené do ďalšieho <p> (rozbíja zobrazenie v emailových klientoch).
+const paragraphs = renderCampaignHtml({ title: "T", bodyText: "<p>Prvý</p><p>Druhý</p>", cards: [], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
+assert.doesNotMatch(paragraphs, /<p[^>]*>(?:(?!<\/p>).)*<p>/);
+assert.match(paragraphs, /<p>Prvý<\/p><p>Druhý<\/p>/);

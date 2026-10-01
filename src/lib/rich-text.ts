@@ -1,5 +1,7 @@
 // Email-safe HTML sanitizer – povoľuje len značky a odkazy vhodné do emailov.
 const ALLOWED_TAGS = new Set(["p", "br", "strong", "b", "em", "i", "a", "ul", "ol", "li"]);
+// Blokové značky z editora/vloženého textu: nepovolíme ich, ale koniec bloku = nový riadok.
+const LINE_BREAK_TAGS = new Set(["div", "h1", "h2", "h3", "h4", "h5", "h6"]);
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>"']/g, (char) =>
@@ -40,6 +42,7 @@ export function sanitizeEmailHtml(input: string): string {
 
     if (!ALLOWED_TAGS.has(tag)) {
       // Nepovolená značka – vyhodíme ju (text okolo už bol escapovaný).
+      if (isClosing && LINE_BREAK_TAGS.has(tag)) result.push("<br>");
     } else if (isClosing) {
       if (stack[stack.length - 1] === tag) {
         result.push(`</${tag}>`);

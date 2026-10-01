@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CAMPAIGN_STATUS, formatDate } from "@/lib/utils";
-import { duplicateCampaignAction } from "@/lib/actions";
+import { deleteCampaignAction, duplicateCampaignAction } from "@/lib/actions";
+import ConfirmButton from "@/components/forms/ConfirmButton";
 
 export default async function KampanePage() {
   const campaigns = await prisma.campaign.findMany({
@@ -90,6 +91,12 @@ export default async function KampanePage() {
                           <input type="hidden" name="id" value={c.id} />
                           <button className="font-medium text-primary-700 hover:text-primary-800">Duplikovať</button>
                         </form>
+                        {c.status === "DRAFT" ? (
+                          <form action={deleteCampaignAction}>
+                            <input type="hidden" name="id" value={c.id} />
+                            <ConfirmButton message="Naozaj zmazať tento koncept? Akcia sa nedá vrátiť.">Zmazať</ConfirmButton>
+                          </form>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

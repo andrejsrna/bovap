@@ -37,3 +37,17 @@ assert.equal(
   "<p>100\u00a0%</p>",
 );
 console.log("rich-text: OK");
+// Editor (Enter) a vložený text vytvárajú <div>/<h1>: riadky sa nesmú zlepiť.
+assert.equal(
+  sanitizeEmailHtml("<div>Prvý riadok</div><div>Druhý riadok</div>"),
+  "Prvý riadok<br>Druhý riadok<br>",
+);
+assert.equal(
+  sanitizeEmailHtml('<h1 style="font-size:12px">Nadpis</h1><p>Text</p>'),
+  "Nadpis<br><p>Text</p>",
+);
+// Atribúty zo vloženého obsahu (style, data-*) sa zahodia.
+assert.equal(
+  sanitizeEmailHtml('<p data-path-to-node="6" style="color:red"><b data-x="1">Ahoj</b></p>'),
+  "<p><b>Ahoj</b></p>",
+);

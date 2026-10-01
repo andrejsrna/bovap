@@ -139,6 +139,14 @@ export async function duplicateCampaignAction(formData: FormData) {
   redirect(`/kampane/${campaign.id}?duplicated=1`);
 }
 
+/** Maže iba koncepty; odoslané kampane ostávajú kvôli histórii výsledkov. */
+export async function deleteCampaignAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id") ?? "");
+  await prisma.campaign.deleteMany({ where: { id, status: "DRAFT" } });
+  redirect("/kampane?deleted=1");
+}
+
 export async function sendCampaignTestAction(formData: FormData) {
   await requireAdmin();
   const id = String(formData.get("id") ?? "");
