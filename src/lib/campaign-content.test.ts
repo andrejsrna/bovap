@@ -19,7 +19,7 @@ console.log("campaign-content: OK");
 const paragraphs = renderCampaignHtml({ title: "T", bodyText: "<p>Prvý</p><p>Druhý</p>", cards: [], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
 assert.doesNotMatch(paragraphs, /<p[^>]*>(?:(?!<\/p>).)*<p>/);
 // Odseky majú explicitný okraj, aby ich emailové programy nerozťahovali podľa vlastných predvolieb.
-assert.match(paragraphs, /<p style="margin:0 0 12px">Prvý<\/p><p style="margin:0 0 12px">Druhý<\/p>/);
+assert.match(paragraphs, /<p style="margin:0 0 6px">Prvý<\/p><p style="margin:0 0 6px">Druhý<\/p>/);
 
 // Odkazy v texte majú farbu šablóny, nie predvolenú modrú z emailového programu.
 const linked = renderCampaignHtml({ title: "T", bodyText: '<a href="https://bovap.sk">Web</a>', cards: [{ title: "K", description: '<a href="https://bovap.sk/x.pdf">Súbor</a>', url: "" }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });

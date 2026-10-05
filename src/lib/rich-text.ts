@@ -41,6 +41,10 @@ const tidy = (html: string) =>
     .replace(/ +$/, "");
 
 export function sanitizeEmailHtml(input: string): string {
+  // Clipboard HTML includes document metadata, CSS and Office comments, not just text.
+  input = input
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, "")
+    .replace(/<(head|style|script|title|xml)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, "");
   const isHtml = /<(?:p|div|ul|ol|li|h[1-6]|br)\b/i.test(input);
   const result: string[] = [];
   const stack: string[] = [];

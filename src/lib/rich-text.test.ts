@@ -9,7 +9,7 @@ assert.equal(
 // Nepovolené značky sa odstránia, ich text ostane escapovaný.
 assert.equal(
   sanitizeEmailHtml("<script>alert('x')</script> <b>ok</b>"),
-  "alert(&#39;x&#39;) <b>ok</b>",
+  " <b>ok</b>",
 );
 // Javascript URL sa zruší (odkaz bez href).
 assert.equal(
@@ -79,4 +79,6 @@ assert.equal(
   sanitizeEmailHtml('<span style="font-family:&quot;Times New Roman&quot;;font-size:16px"><font face="Arial" color="#000">Text</font></span>'),
   "Text",
 );
+// Word/Excel metadata must never become visible campaign text.
+assert.equal(sanitizeEmailHtml('<html><head><style>p.MsoNormal {font-family:Calibri}</style><title>Document</title></head><body><!--StartFragment--><p>Ahoj</p><!--EndFragment--></body></html>'), '<p>Ahoj</p>');
 console.log("rich-text: OK");
