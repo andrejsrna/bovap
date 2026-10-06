@@ -84,7 +84,7 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6, onCh
           document.execCommand("insertHTML", false, clean);
           sync();
         }}
-        style={{ minHeight: `${rows * 24}px` }}
+        style={{ minHeight: `${rows * 24}px`, textAlign: "justify", textAlignLast: "left" }}
         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 [&_a]:text-primary-700 [&_a]:underline [&_p]:my-1 [&_li]:my-0 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 leading-normal"
       />
       <input type="hidden" name={name} ref={hiddenRef} />

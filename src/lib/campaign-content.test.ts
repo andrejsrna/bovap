@@ -48,3 +48,7 @@ assert.match(renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "We
 const noLink = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Len info", description: "Text", url: "" }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
 assert.doesNotMatch(noLink, /href=""/);
 assert.doesNotMatch(noLink, /Pozrieť podrobnosti/);
+// Body and card prose are justified, without stretching the last line or headings.
+assert.match(paragraphs, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">/);
+assert.match(noLink, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">Text<\/div>/);
+assert.doesNotMatch(paragraphs, /<h1[^>]*text-align:justify/);
