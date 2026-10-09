@@ -77,8 +77,11 @@ assert.equal(
 );
 assert.equal(
   sanitizeEmailHtml('<span style="font-family:&quot;Times New Roman&quot;;font-size:16px"><font face="Arial" color="#000">Text</font></span>'),
-  "Text",
+  '<font style="font-family:Arial,Helvetica,sans-serif">Text</font>',
 );
 // Word/Excel metadata must never become visible campaign text.
 assert.equal(sanitizeEmailHtml('<html><head><style>p.MsoNormal {font-family:Calibri}</style><title>Document</title></head><body><!--StartFragment--><p>Ahoj</p><!--EndFragment--></body></html>'), '<p>Ahoj</p>');
+assert.equal(sanitizeEmailHtml('<font face="Verdana" size="4" color="red">Text</font>'), '<font style="font-family:Verdana,sans-serif;font-size:18px">Text</font>');
+assert.equal(sanitizeEmailHtml('<font face="Unknown" size="99" onclick="alert(1)">Text</font>'), 'Text');
+assert.equal(sanitizeEmailHtml(sanitizeEmailHtml('<font face="Georgia" size="5">Text</font>')), '<font style="font-family:Georgia,serif;font-size:24px">Text</font>');
 console.log("rich-text: OK");

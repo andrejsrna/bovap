@@ -1,5 +1,7 @@
 // Email-safe HTML sanitizer – povoľuje len značky a odkazy vhodné do emailov.
-const ALLOWED_TAGS = new Set(["p", "br", "strong", "b", "em", "i", "a", "ul", "ol", "li"]);
+export const EMAIL_FONTS: Record<string, string> = { Arial: "Arial,Helvetica,sans-serif", Verdana: "Verdana,sans-serif", Georgia: "Georgia,serif", "Times New Roman": "Times New Roman,Times,serif" };
+export const EMAIL_FONT_SIZES: Record<string, number> = { "2": 13, "3": 16, "4": 18, "5": 24, "6": 32 };
+const ALLOWED_TAGS = new Set(["font", "p", "br", "strong", "b", "em", "i", "a", "ul", "ol", "li"]);
 // Blokové značky z editora/vloženého textu: nepovolíme ich, ale koniec bloku = nový riadok.
 const LINE_BREAK_TAGS = new Set(["div", "h1", "h2", "h3", "h4", "h5", "h6"]);
 
@@ -78,6 +80,19 @@ export function sanitizeEmailHtml(input: string): string {
       if (/^https?:\/\//i.test(href)) {
         result.push(`<a href="${escapeHtml(href)}">`);
         stack.push("a");
+      }
+    } else if (tag === "font") {
+      const face = /\bface\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1];
+      const size = /\bsize\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1];
+      const style = /\bstyle\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
+      const family = /(?:^|;)\s*font-family\s*:\s*([^;]+)/i.exec(style)?.[1]?.trim();
+      const px = /(?:^|;)\s*font-size\s*:\s*(\d+)px\s*(?:;|$)/i.exec(style)?.[1];
+      const font = face && Object.hasOwn(EMAIL_FONTS, face) ? EMAIL_FONTS[face] : Object.values(EMAIL_FONTS).find((value) => value === family);
+      const pixels = size && Object.hasOwn(EMAIL_FONT_SIZES, size) ? EMAIL_FONT_SIZES[size] : Object.values(EMAIL_FONT_SIZES).find((value) => String(value) === px);
+      const safeStyle = [font ? `font-family:${font}` : "", pixels ? `font-size:${pixels}px` : ""].filter(Boolean).join(";");
+      if (safeStyle) {
+        result.push(`<font style="${safeStyle}">`);
+        stack.push("font");
       }
     } else if (tag === "p" && stack.includes("li")) {
       // <p> v <li> (z Wordu/AI) pridáva položkám okraje – rozbalíme ho.
