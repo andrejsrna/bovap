@@ -3,8 +3,9 @@ import type { CSSProperties } from "react";
 // Jediný zdroj typografie: editor, detail kampane aj emailová šablóna musia vyzerať rovnako.
 export const EMAIL_FONT_STACK = "Arial,Helvetica,sans-serif";
 export const EMAIL_PROSE = {
-  body: { fontSize: 16, lineHeight: 1.4, color: "#435967" },
-  card: { fontSize: 15, lineHeight: 1.4, color: "#526574" },
+  // width = šírka textu v emaile (620 px šablóna mínus okraje), aby sa riadky lámali rovnako.
+  body: { fontSize: 16, lineHeight: 1.4, color: "#435967", width: 536 },
+  card: { fontSize: 15, lineHeight: 1.4, color: "#526574", width: 434 },
 } as const;
 export const EMAIL_SPACING = { paragraph: 6, list: 6, listIndent: 22, listItem: 2 } as const;
 
@@ -13,7 +14,7 @@ export type EmailProseKind = keyof typeof EMAIL_PROSE;
 /** Inline štýl pre admin (React) – rovnaké hodnoty ako v emaile. */
 export function emailProseStyle(kind: EmailProseKind): CSSProperties {
   const prose = EMAIL_PROSE[kind];
-  return { fontFamily: EMAIL_FONT_STACK, fontSize: `${prose.fontSize}px`, lineHeight: prose.lineHeight, color: prose.color, textAlign: "justify", textAlignLast: "left" };
+  return { fontFamily: EMAIL_FONT_STACK, fontSize: `${prose.fontSize}px`, lineHeight: prose.lineHeight, color: prose.color, textAlign: "justify", textAlignLast: "left", maxWidth: `${prose.width}px` };
 }
 
 /** Okraje odsekov a zoznamov v admine – zhodné s inline štýlmi v emaile. */

@@ -3,7 +3,7 @@
 import { useRef, useEffect } from "react";
 import { sanitizeEmailHtml, EMAIL_FONTS, EMAIL_FONT_SIZES } from "@/lib/rich-text";
 import { editorPasteHtml } from "@/lib/editor-paste";
-import { EMAIL_PROSE_CLASS, emailProseStyle, type EmailProseKind } from "@/lib/email-prose";
+import { EMAIL_PROSE, EMAIL_PROSE_CLASS, emailProseStyle, type EmailProseKind } from "@/lib/email-prose";
 
 function ToolButton({
   label,
@@ -112,7 +112,7 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6, onCh
           document.execCommand("insertHTML", false, clean);
           sync();
         }}
-        style={{ minHeight: `${rows * 24}px`, ...emailProseStyle(variant) }}
+        style={{ minHeight: `${rows * 24}px`, ...emailProseStyle(variant), maxWidth: `${EMAIL_PROSE[variant].width + 26}px` }}
         className={`w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 ${EMAIL_PROSE_CLASS}`}
       />
       <input type="hidden" name={name} ref={hiddenRef} />

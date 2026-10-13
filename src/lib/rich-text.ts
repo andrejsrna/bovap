@@ -35,12 +35,25 @@ const BLOCK = "(?:p|ul|ol|li)";
 const tidy = (html: string) =>
   html
     .replace(/<p>(?:\s|\u00a0|<br>)*<\/p>/g, "") // prázdne odseky = diery v emaile
-    .replace(/<br>(?=<(?:\/?(?:p|ul|ol|li))\b)/g, "") // <br> pred blokom je navyše
     .replace(new RegExp(`\\s+(?=<\\/?${BLOCK}>)`, "g"), "")
     .replace(new RegExp(`(<\\/?${BLOCK}>)\\s+`, "g"), "$1")
-    .replace(/(?:<br>)+$/, "")
-    .replace(/ +(?=<br>)/g, "")
-    .replace(/ +$/, "");
+    .replace(/<br>(?=<(?:\/?(?:p|ul|ol|li))\b)/g, "") // <br> pred blokom je navyše
+    .replace(/(?:<br>|\s)+$/, "")
+    .replace(/ +(?=<br>)/g, "");
+
+// Povolené písmo/veľkosť z face/size alebo style (Chrome píše aj <span style="font-family: Georgia, serif">).
+const fontStyle = (attrs: string) => {
+  const attr = (name: string) => new RegExp(`\\b${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, "i").exec(attrs);
+  const value = (name: string) => { const m = attr(name); return decodeHtmlEntities(m?.[2] ?? m?.[3] ?? ""); };
+  const style = value("style");
+  const family = /(?:^|;)\s*font-family\s*:\s*([^;]+)/i.exec(style)?.[1] ?? value("face");
+  const firstFamily = family.split(",")[0].replace(/["']/g, "").trim();
+  const px = /(?:^|;)\s*font-size\s*:\s*(\d+)px\s*(?:;|$)/i.exec(style)?.[1];
+  const size = value("size");
+  const font = Object.hasOwn(EMAIL_FONTS, firstFamily) ? EMAIL_FONTS[firstFamily] : undefined;
+  const pixels = Object.hasOwn(EMAIL_FONT_SIZES, size) ? EMAIL_FONT_SIZES[size] : Object.values(EMAIL_FONT_SIZES).find((v) => String(v) === px);
+  return [font ? `font-family:${font}` : "", pixels ? `font-size:${pixels}px` : ""].filter(Boolean).join(";");
+};
 
 export function sanitizeEmailHtml(input: string): string {
   // Clipboard HTML includes document metadata, CSS and Office comments, not just text.
@@ -61,8 +74,21 @@ export function sanitizeEmailHtml(input: string): string {
     const attrs = match[2];
     const isClosing = full.startsWith("</");
 
+    // Písmo pridané cez style na inej značke (<span>, <b>, <div>) = <font> vnútri nej, zatvorí sa spolu s ňou.
+    const fontMark = `font:${tag}`;
+    const style = isClosing || tag === "font" || tag === "br" ? "" : fontStyle(attrs);
+    if (isClosing && stack.includes(fontMark)) {
+      while (stack.length && stack[stack.length - 1] !== fontMark) result.push(`</${stack.pop()!.replace(/^font:.*/, "font")}>`);
+      stack.pop();
+      result.push("</font>");
+    }
+
     if (!ALLOWED_TAGS.has(tag)) {
       // Nepovolená značka – vyhodíme ju (text okolo už bol escapovaný).
+      if (style) {
+        result.push(`<font style="${style}">`);
+        stack.push(fontMark);
+      }
       if (isClosing && LINE_BREAK_TAGS.has(tag)) result.push("<br>");
       // Tabuľka z Excelu: bunky oddelíme medzerou, riadky novým riadkom.
       else if (isClosing && (tag === "td" || tag === "th")) result.push(" ");
@@ -82,14 +108,7 @@ export function sanitizeEmailHtml(input: string): string {
         stack.push("a");
       }
     } else if (tag === "font") {
-      const face = /\bface\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1];
-      const size = /\bsize\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1];
-      const style = /\bstyle\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? "";
-      const family = /(?:^|;)\s*font-family\s*:\s*([^;]+)/i.exec(style)?.[1]?.trim();
-      const px = /(?:^|;)\s*font-size\s*:\s*(\d+)px\s*(?:;|$)/i.exec(style)?.[1];
-      const font = face && Object.hasOwn(EMAIL_FONTS, face) ? EMAIL_FONTS[face] : Object.values(EMAIL_FONTS).find((value) => value === family);
-      const pixels = size && Object.hasOwn(EMAIL_FONT_SIZES, size) ? EMAIL_FONT_SIZES[size] : Object.values(EMAIL_FONT_SIZES).find((value) => String(value) === px);
-      const safeStyle = [font ? `font-family:${font}` : "", pixels ? `font-size:${pixels}px` : ""].filter(Boolean).join(";");
+      const safeStyle = fontStyle(attrs);
       if (safeStyle) {
         result.push(`<font style="${safeStyle}">`);
         stack.push("font");
@@ -99,11 +118,15 @@ export function sanitizeEmailHtml(input: string): string {
     } else {
       result.push(`<${tag}>`);
       stack.push(tag);
+      if (style) {
+        result.push(`<font style="${style}">`);
+        stack.push(fontMark);
+      }
     }
     last = match.index + full.length;
   }
 
   if (last < input.length) result.push(escapeText(input.slice(last), isHtml));
-  while (stack.length) result.push(`</${stack.pop()}>`);
+  while (stack.length) result.push(`</${stack.pop()!.replace(/^font:.*/, "font")}>`);
   return tidy(result.join(""));
 }

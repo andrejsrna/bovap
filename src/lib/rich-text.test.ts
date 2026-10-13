@@ -77,11 +77,19 @@ assert.equal(
 );
 assert.equal(
   sanitizeEmailHtml('<span style="font-family:&quot;Times New Roman&quot;;font-size:16px"><font face="Arial" color="#000">Text</font></span>'),
-  '<font style="font-family:Arial,Helvetica,sans-serif">Text</font>',
+  '<font style="font-family:Times New Roman,Times,serif;font-size:16px"><font style="font-family:Arial,Helvetica,sans-serif">Text</font></font>',
 );
 // Word/Excel metadata must never become visible campaign text.
 assert.equal(sanitizeEmailHtml('<html><head><style>p.MsoNormal {font-family:Calibri}</style><title>Document</title></head><body><!--StartFragment--><p>Ahoj</p><!--EndFragment--></body></html>'), '<p>Ahoj</p>');
 assert.equal(sanitizeEmailHtml('<font face="Verdana" size="4" color="red">Text</font>'), '<font style="font-family:Verdana,sans-serif;font-size:18px">Text</font>');
 assert.equal(sanitizeEmailHtml('<font face="Unknown" size="99" onclick="alert(1)">Text</font>'), 'Text');
 assert.equal(sanitizeEmailHtml(sanitizeEmailHtml('<font face="Georgia" size="5">Text</font>')), '<font style="font-family:Georgia,serif;font-size:24px">Text</font>');
+// Chrome pri zmene písma niekedy uloží <span style> alebo <b style> namiesto <font> – zachováme povolené písmo/veľkosť.
+assert.equal(
+  sanitizeEmailHtml('<p><span style="font-family: Georgia, serif; font-size: 13px;">Text</span> <b style="font-family: Georgia, serif; font-size: 13px;">tučný</b></p>'),
+  '<p><font style="font-family:Georgia,serif;font-size:13px">Text</font> <b><font style="font-family:Georgia,serif;font-size:13px">tučný</font></b></p>',
+);
+assert.equal(sanitizeEmailHtml('<span style="font-family: Comic Sans MS; color: red">Text</span>'), "Text");
+assert.equal(sanitizeEmailHtml('<div style="font-size: 18px">A</div>B'), '<font style="font-size:18px">A</font><br>B');
+assert.equal(sanitizeEmailHtml("<p>A<br>\n</p>Koniec<br> \n"), "<p>A</p>Koniec");
 console.log("rich-text: OK");

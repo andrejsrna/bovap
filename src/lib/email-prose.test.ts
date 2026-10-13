@@ -12,6 +12,6 @@ assert.ok(html.includes(`<p style="margin:0 0 ${EMAIL_SPACING.paragraph}px">`));
 assert.ok(html.includes(`<ul style="margin:0 0 ${EMAIL_SPACING.list}px;padding-left:${EMAIL_SPACING.listIndent}px">`));
 assert.ok(html.includes(`<li style="margin:0 0 ${EMAIL_SPACING.listItem}px">`));
 // Admin editor/detail: rovnaké písmo, veľkosť, riadkovanie a okraje.
-assert.deepEqual(emailProseStyle("body"), { fontFamily: EMAIL_FONT_STACK, fontSize: "16px", lineHeight: 1.4, color: body.color, textAlign: "justify", textAlignLast: "left" });
+assert.deepEqual(emailProseStyle("body"), { fontFamily: EMAIL_FONT_STACK, fontSize: "16px", lineHeight: 1.4, color: body.color, textAlign: "justify", textAlignLast: "left", maxWidth: "536px" });
 for (const cls of [`[&_p]:mb-[${EMAIL_SPACING.paragraph}px]`, `[&_ul]:pl-[${EMAIL_SPACING.listIndent}px]`, `[&_li]:mb-[${EMAIL_SPACING.listItem}px]`]) assert.ok(EMAIL_PROSE_CLASS.includes(cls), cls);
 console.log("email-prose: OK");
