@@ -52,3 +52,8 @@ assert.doesNotMatch(noLink, /Pozrieť podrobnosti/);
 assert.match(paragraphs, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">/);
 assert.match(noLink, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">Text<\/div>/);
 assert.doesNotMatch(paragraphs, /<h1[^>]*text-align:justify/);
+
+// Logo v hlavičke: verejná absolútna URL, alt text, pevná šírka; súbor existuje v public/.
+import { existsSync } from "node:fs";
+assert.match(email, /<img src="https:\/\/mail\.bovap\.sk\/bovap-logo\.png" alt="Občianske združenie BOVAP" width="130"/);
+assert.ok(existsSync("public/bovap-logo.png"), "public/bovap-logo.png chýba");
