@@ -7,8 +7,9 @@ const form = (entries: Record<string, string>) => {
   return data;
 };
 
-assert.deepEqual(campaignDraftInput(form({ name: " Test ", subject: " Predmet ", title: " Titulok ", bodyText: " Text ", cards: '[{"title":"Karta","description":"Popis","url":"https://bovap.sk"}]' })), {
-  name: "Test", subject: "Predmet", title: "Titulok", bodyText: "Text", cards: '[{"title":"Karta","description":"Popis","url":"https://bovap.sk"}]',
+assert.deepEqual(campaignDraftInput(form({ name: " Test ", subject: " Predmet ", title: " Titulok ", titleBg: "#fff4d6", bodyText: " Text ", cards: '[{"title":"Karta","description":"Popis","url":"https://bovap.sk"}]' })), {
+  name: "Test", subject: "Predmet", title: "Titulok", titleBg: "#fff4d6", bodyText: "Text", cards: '[{"title":"Karta","description":"Popis","url":"https://bovap.sk"}]',
 });
+assert.equal(campaignDraftInput(form({ name: "T", subject: "P", titleBg: "red;x:y" }))?.titleBg, "");
 assert.equal(campaignDraftInput(form({ name: "", subject: "Predmet" })), null);
 console.log("campaign-edit: OK");

@@ -53,6 +53,7 @@ model Campaign {
   name             String
   subject          String // nadpis (subject)
   title            String // titulok v tele
+  titleBg          String @default("") // farba pozadia titulku (paleta v body-blocks.ts)
   bodyText         String // text správy
   cards            String @default("[]") // JSON: titulok, popis, link
   documents        String @default("[]") // JSON: názov dokumentu, verejný link

@@ -2,6 +2,7 @@ export type CampaignDuplicateSource = {
   name: string;
   subject: string;
   title: string;
+  titleBg: string;
   bodyText: string;
   cards: string;
   documents: string;
@@ -14,6 +15,7 @@ export function duplicateCampaignData(source: CampaignDuplicateSource) {
     name: `Kópia – ${source.name}`,
     subject: source.subject,
     title: source.title,
+    titleBg: source.titleBg,
     bodyText: source.bodyText,
     cards: source.cards,
     documents: source.documents,

@@ -139,6 +139,7 @@ export async function processSendQueue(opts: {
         subject: r.campaign.subject,
         htmlContent: renderCampaignHtml({
           title: r.campaign.title || r.campaign.subject,
+          titleBg: r.campaign.titleBg,
           bodyText: r.campaign.bodyText,
           cards: parseCampaignCards(r.campaign.cards),
           documents: parseCampaignDocuments(r.campaign.documents),

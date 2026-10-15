@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { parseTestRecipients, validGroupName } from "@/lib/settings-input";
 import { parseCampaignCards, renderCampaignHtml } from "@/lib/campaign-content";
 import { campaignDraftInput } from "@/lib/campaign-edit";
+import { isBg } from "@/lib/body-blocks";
 import { duplicateCampaignData } from "@/lib/campaign-duplicate";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
@@ -82,6 +83,7 @@ export async function createCampaignAction(
   const name = String(formData.get("name") ?? "").trim();
   const subject = String(formData.get("subject") ?? "").trim();
   const title = String(formData.get("title") ?? "").trim();
+  const titleBg = isBg(formData.get("titleBg")) ? String(formData.get("titleBg")) : "";
   const bodyText = String(formData.get("bodyText") ?? "").trim();
   const imageUrl = String(formData.get("imageUrl") ?? "").trim() || null;
   const cards = parseCampaignCards(String(formData.get("cards") ?? "[]"));
@@ -89,7 +91,7 @@ export async function createCampaignAction(
   if (!name || !subject) return { error: "Vyplňte názov a nadpis kampane." };
 
   const campaign = await prisma.campaign.create({
-    data: { name, subject, title, bodyText, cards: JSON.stringify(cards), imageUrl, status: "DRAFT" },
+    data: { name, subject, title, titleBg, bodyText, cards: JSON.stringify(cards), imageUrl, status: "DRAFT" },
   });
   try {
     const cardsWithPdfs = await attachPdfLinks(cards, formData, campaign.id);
@@ -128,6 +130,7 @@ export async function duplicateCampaignAction(formData: FormData) {
       name: true,
       subject: true,
       title: true,
+      titleBg: true,
       bodyText: true,
       cards: true,
       documents: true,
@@ -168,7 +171,7 @@ export async function sendCampaignTestAction(formData: FormData) {
       sender: { name: senderName?.value || "OZ BOVAP", email: senderEmail?.value || "noreply@bovap.sk" },
       to: recipients.map((email) => ({ email })),
       subject: `[TEST] ${campaign.subject}`,
-      htmlContent: renderCampaignHtml({ title: campaign.title || campaign.subject, bodyText: campaign.bodyText, cards: parseCampaignCards(campaign.cards), documents: parseCampaignDocuments(campaign.documents), unsubscribeUrl: `${appUrl}/odhlasenie/ukazka` }),
+      htmlContent: renderCampaignHtml({ title: campaign.title || campaign.subject, titleBg: campaign.titleBg, bodyText: campaign.bodyText, cards: parseCampaignCards(campaign.cards), documents: parseCampaignDocuments(campaign.documents), unsubscribeUrl: `${appUrl}/odhlasenie/ukazka` }),
     }),
   });
   if (!response.ok) redirect(`/kampane/${id}?testError=1`);

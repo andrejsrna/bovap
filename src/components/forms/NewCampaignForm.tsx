@@ -15,6 +15,7 @@ const blank = (): Card => ({ title: "", description: "", url: "" });
 export default function NewCampaignForm() {
   const [state, formAction, pending] = useActionState(createCampaignAction, undefined);
   const [cards, setCards] = useState<Card[]>([blank()]);
+  const [titleBg, setTitleBg] = useState("");
   const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => {
     if (i !== index) return card;
     return key === "url" ? { title: card.title, description: card.description, url: value, ...(card.bg && { bg: card.bg }) } : { ...card, [key]: value };
@@ -27,7 +28,7 @@ export default function NewCampaignForm() {
       <Field><Label htmlFor="name">Názov kampane</Label><Input id="name" name="name" placeholder="napr. Septembrová výzva" required /></Field>
       <Field><Label htmlFor="subject">Predmet emailu</Label><Input id="subject" name="subject" placeholder="Čo príjemca uvidí v schránke" required /></Field>
     </div>
-    <Field><Label htmlFor="title">Hlavný titulok</Label><Input id="title" name="title" placeholder="Dôležité informácie pre samosprávy" required /></Field>
+    <Field><Label htmlFor="title">Hlavný titulok</Label><Input id="title" name="title" placeholder="Dôležité informácie pre samosprávy" required style={titleBg ? { backgroundColor: titleBg } : undefined} /><div className="mt-2"><BgSelect value={titleBg} onChange={setTitleBg} /><input type="hidden" name="titleBg" value={titleBg} /></div></Field>
     <Field><Label htmlFor="bodyText">Úvodný text</Label><BodyBlocksEditor name="bodyText" /></Field>
 
     <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:p-5">

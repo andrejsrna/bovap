@@ -10,6 +10,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const html = renderCampaignHtml({
     title: campaign.title || campaign.subject,
+    titleBg: campaign.titleBg,
     bodyText: campaign.bodyText,
     cards: parseCampaignCards(campaign.cards),
     documents: parseCampaignDocuments(campaign.documents),

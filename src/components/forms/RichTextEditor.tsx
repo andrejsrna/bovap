@@ -1,9 +1,8 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, type CSSProperties } from "react";
 import { sanitizeEmailHtml, EMAIL_FONTS, EMAIL_FONT_SIZES } from "@/lib/rich-text";
 import { editorPasteHtml } from "@/lib/editor-paste";
-import { BLOCK_PAD } from "@/lib/body-blocks";
 import { EMAIL_PROSE, EMAIL_PROSE_CLASS, emailProseStyle, type EmailProseKind } from "@/lib/email-prose";
 
 function ToolButton({
@@ -30,8 +29,8 @@ function ToolButton({
   );
 }
 
-export default function RichTextEditor({ name, defaultValue = "", rows = 6, onChange, variant = "body", bg = "" }: {
-  name: string; defaultValue?: string; rows?: number; onChange?: (value: string) => void; variant?: EmailProseKind; bg?: string;
+export default function RichTextEditor({ name, defaultValue = "", rows = 6, onChange, variant = "body", boxStyle }: {
+  name: string; defaultValue?: string; rows?: number; onChange?: (value: string) => void; variant?: EmailProseKind; boxStyle?: CSSProperties;
 }) {
   const editorRef = useRef<HTMLDivElement>(null);
   const hiddenRef = useRef<HTMLInputElement>(null);
@@ -113,7 +112,7 @@ export default function RichTextEditor({ name, defaultValue = "", rows = 6, onCh
           document.execCommand("insertHTML", false, clean);
           sync();
         }}
-        style={{ minHeight: `${rows * 24}px`, ...emailProseStyle(variant), maxWidth: `${EMAIL_PROSE[variant].width + 26 - (bg ? 2 * BLOCK_PAD.x : 0)}px`, backgroundColor: bg || "#ffffff" }}
+        style={{ minHeight: `${rows * 24}px`, ...emailProseStyle(variant), maxWidth: `${EMAIL_PROSE[variant].width + (boxStyle ? 0 : 26)}px`, background: "#ffffff", ...boxStyle }}
         className={`w-full rounded-lg border border-gray-300 px-3 py-2.5 outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 ${EMAIL_PROSE_CLASS}`}
       />
       <input type="hidden" name={name} ref={hiddenRef} />
