@@ -14,10 +14,10 @@ const hmac = async (key: ArrayBuffer | Uint8Array, value: string) => {
   const raw = source.slice().buffer;
   return crypto.subtle.sign("HMAC", await crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]), new TextEncoder().encode(value));
 };
-const dateParts = () => {
-  const now = new Date();
+// SigV4: amzDate = YYYYMMDD'T'HHMMSS'Z' (presne jedno Z; dvojité Z odmieta novší MinIO ako MalformedDate).
+export const dateParts = (now = new Date()) => {
   const iso = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
-  return { date: iso.slice(0, 8), amzDate: iso.slice(0, 16) + "Z" };
+  return { date: iso.slice(0, 8), amzDate: iso.slice(0, 15) + "Z" };
 };
 
 export async function uploadCampaignPdf(file: File, campaignId: string) {
