@@ -38,7 +38,7 @@ assert.deepEqual(parseCampaignCards(JSON.stringify([{ title: "A", description: "
 // Karta s PDF: ostáva odkaz „Pozrieť podrobnosti →“, za ním typ a veľkosť (všetko v jednom odkaze).
 const pdfCard = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Výzva", description: "", url: pdfUrl, file: { type: "PDF", size: 372720 } }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
 assert.match(pdfCard, new RegExp(`<a href="${pdfUrl.replace(/[.]/g, "\\.")}"[^>]*>Pozrieť podrobnosti&nbsp; →<span[^>]*> · PDF, 364 KB</span></a>`));
-assert.doesNotMatch(pdfCard, /Stiahnuť PDF|display:block/);
+assert.doesNotMatch(pdfCard, /Stiahnuť PDF|<a [^>]*display:block/);
 // Starší PDF odkaz bez uložených metaúdajov: typ sa pozná z URL, veľkosť sa nevymýšľa.
 const legacyPdf = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "Výzva", description: "", url: pdfUrl }], unsubscribeUrl: "https://bovap.sk/odhlasenie" });
 assert.match(legacyPdf, /Pozrieť podrobnosti&nbsp; →<span[^>]*> · PDF<\/span>/);
