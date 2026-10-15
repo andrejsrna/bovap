@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { ErrorAlert } from "@/components/ui/ErrorAlert";
 import { Field, Input, Label } from "@/components/ui/Input";
 import RichTextEditor from "@/components/forms/RichTextEditor";
+import BodyBlocksEditor from "@/components/forms/BodyBlocksEditor";
+import BgSelect from "@/components/forms/BgSelect";
 
-type Card = { title: string; description: string; url: string; file?: { type: "PDF"; size: number } };
+type Card = { title: string; description: string; url: string; bg?: string; file?: { type: "PDF"; size: number } };
 const blank = (): Card => ({ title: "", description: "", url: "" });
 
 export default function NewCampaignForm() {
@@ -15,7 +17,7 @@ export default function NewCampaignForm() {
   const [cards, setCards] = useState<Card[]>([blank()]);
   const update = (index: number, key: keyof Card, value: string) => setCards((items) => items.map((card, i) => {
     if (i !== index) return card;
-    return key === "url" ? { title: card.title, description: card.description, url: value } : { ...card, [key]: value };
+    return key === "url" ? { title: card.title, description: card.description, url: value, ...(card.bg && { bg: card.bg }) } : { ...card, [key]: value };
   }));
 
   return <form action={formAction} encType="multipart/form-data" className="space-y-6">
@@ -26,14 +28,14 @@ export default function NewCampaignForm() {
       <Field><Label htmlFor="subject">Predmet emailu</Label><Input id="subject" name="subject" placeholder="Čo príjemca uvidí v schránke" required /></Field>
     </div>
     <Field><Label htmlFor="title">Hlavný titulok</Label><Input id="title" name="title" placeholder="Dôležité informácie pre samosprávy" required /></Field>
-    <Field><Label htmlFor="bodyText">Úvodný text</Label><RichTextEditor name="bodyText" rows={5} /></Field>
+    <Field><Label htmlFor="bodyText">Úvodný text</Label><BodyBlocksEditor name="bodyText" /></Field>
 
     <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:p-5">
       <div className="mb-4"><h2 className="font-semibold text-gray-900">Obsahové karty</h2><p className="mt-1 text-sm text-gray-500">Každá karta má názov, krátky popis a odkaz. V emaile dostane vlastné tlačidlo.</p></div>
       <div className="space-y-4">
         {cards.map((card, index) => <div key={index} className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between"><strong className="text-sm text-gray-700">Karta {index + 1}</strong>{cards.length > 1 ? <button type="button" onClick={() => setCards((items) => items.filter((_, i) => i !== index))} className="text-sm font-medium text-red-600 hover:text-red-700">Odstrániť</button> : null}</div>
-          <div className="space-y-3"><Input value={card.title} onChange={(e) => update(index, "title", e.target.value)} placeholder="Názov karty" /><div><Label>Popis karty</Label><RichTextEditor name={`card-description-${index}`} defaultValue={card.description} rows={3} variant="card" onChange={(value) => update(index, "description", value)} /></div><Input value={card.url} onChange={(e) => update(index, "url", e.target.value)} type="url" placeholder="https://… alebo PDF nižšie" /><div><Label htmlFor={`pdf-${index}`} className="text-xs">PDF dokument (voliteľné, max. 10 MB)</Label><Input id={`pdf-${index}`} name={`pdf-${index}`} type="file" accept="application/pdf,.pdf" /></div></div>
+          <div className="space-y-3"><Input value={card.title} onChange={(e) => update(index, "title", e.target.value)} placeholder="Názov karty" /><div><Label>Popis karty</Label><RichTextEditor name={`card-description-${index}`} defaultValue={card.description} rows={3} variant="card" onChange={(value) => update(index, "description", value)} /></div><BgSelect value={card.bg ?? ""} onChange={(value) => update(index, "bg", value)} /><Input value={card.url} onChange={(e) => update(index, "url", e.target.value)} type="url" placeholder="https://… alebo PDF nižšie" /><div><Label htmlFor={`pdf-${index}`} className="text-xs">PDF dokument (voliteľné, max. 10 MB)</Label><Input id={`pdf-${index}`} name={`pdf-${index}`} type="file" accept="application/pdf,.pdf" /></div></div>
         </div>)}
       </div>
       <button type="button" onClick={() => setCards((items) => [...items, blank()])} className="mt-4 text-sm font-semibold text-primary-700 hover:text-primary-800">+ Pridať kartu</button>
