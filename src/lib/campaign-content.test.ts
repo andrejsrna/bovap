@@ -59,3 +59,8 @@ assert.match(email, /<img src="https:\/\/mail\.bovap\.sk\/bovap-logo\.png" alt="
 assert.match(email, /background="https:\/\/mail\.bovap\.sk\/bovap-header\.png"[^>]*bgcolor="#173b52"/);
 assert.ok(existsSync("public/bovap-header.png"), "public/bovap-header.png chýba");
 assert.ok(existsSync("public/bovap-logo.png"), "public/bovap-logo.png chýba");
+
+// Mobil: hlavička sa zmenší a popisok sa skryje, inak by roztiahla email nad šírku displeja.
+assert.match(email, /@media only screen and \(max-width:620px\)\{[^<]*\.header-logo\{width:170px!important\}\.header-tag\{display:none!important\}/);
+assert.match(email, /class="header-logo"/);
+assert.match(email, /class="header-tag"/);
