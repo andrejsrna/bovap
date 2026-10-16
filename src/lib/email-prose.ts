@@ -14,7 +14,7 @@ export type EmailProseKind = keyof typeof EMAIL_PROSE;
 /** Inline štýl pre admin (React) – rovnaké hodnoty ako v emaile. */
 export function emailProseStyle(kind: EmailProseKind): CSSProperties {
   const prose = EMAIL_PROSE[kind];
-  return { fontFamily: EMAIL_FONT_STACK, fontSize: `${prose.fontSize}px`, lineHeight: prose.lineHeight, color: prose.color, textAlign: "justify", textAlignLast: "left", maxWidth: `${prose.width}px` };
+  return { fontFamily: EMAIL_FONT_STACK, fontSize: `${prose.fontSize}px`, lineHeight: prose.lineHeight, color: prose.color, textAlign: "justify", textAlignLast: "left", overflowWrap: "anywhere", maxWidth: `${prose.width}px` };
 }
 
 /** Okraje odsekov a zoznamov v admine – zhodné s inline štýlmi v emaile. */

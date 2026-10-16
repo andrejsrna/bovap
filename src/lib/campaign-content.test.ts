@@ -64,3 +64,13 @@ assert.ok(existsSync("public/bovap-logo.png"), "public/bovap-logo.png chýba");
 assert.match(email, /@media only screen and \(max-width:620px\)\{[^<]*\.header-logo\{width:170px!important\}\.header-tag\{display:none!important\}/);
 assert.match(email, /class="header-logo"/);
 assert.match(email, /class="header-tag"/);
+
+// Štruktúra: tabuľky sú vyvážené a obsah aj pätička sú vnútri 620 px kontajnera (inak sa email roztiahne).
+const opens = (email.match(/<table\b/g) ?? []).length, closes = (email.match(/<\/table>/g) ?? []).length;
+assert.equal(opens, closes);
+const shellStart = email.lastIndexOf("<table", email.indexOf('class="email-shell"'));
+let depth = 0, shellEnd = -1;
+for (const m of email.slice(shellStart).matchAll(/<table\b|<\/table>/g)) { depth += m[0] === "</table>" ? -1 : 1; if (depth === 0) { shellEnd = shellStart + m.index!; break; } }
+assert.ok(email.indexOf('class="email-pad"') < shellEnd && email.indexOf('class="footer-pad"') < shellEnd, "obsah musí byť v email-shell");
+// Dlhé nezalomiteľné reťazce (napr. ______) nesmú rozťahovať email na mobile.
+assert.match(email, /overflow-wrap:anywhere/);
