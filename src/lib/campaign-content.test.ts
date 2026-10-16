@@ -6,7 +6,7 @@ assert.deepEqual(parseCampaignCards('not-json'), []);
 assert.deepEqual(parseCampaignCards('[{"title":"PDF","description":"","url":""}]'), [{ title: "PDF", description: "", url: "" }]);
 const email = renderCampaignHtml({ title: "Dôležité", bodyText: "Dobrý deň", cards: [{ title: "Výzva", description: "<script>", url: "https://bovap.sk" }], unsubscribeUrl: "https://mail.bovap.sk/odhlasenie/token" });
 assert.doesNotMatch(email, /<script>|&lt;script&gt;/);
-assert.match(email, /Praktické informácie/);
+assert.match(email, /Praktické<br>informácie/);
 assert.match(email, /Pozrieť podrobnosti/);
 assert.match(email, /max-width: 620px/);
 assert.match(renderCampaignHtml({ title: "T", bodyText: "", cards: [], documents: [{ name: "Výzva.pdf", url: "https://s3.synthbit.sk/bovap/vyzva.pdf" }], unsubscribeUrl: "https://bovap.sk/odhlasenie" }), /Dokumenty na stiahnutie/);
@@ -55,5 +55,7 @@ assert.doesNotMatch(paragraphs, /<h1[^>]*text-align:justify/);
 
 // Logo v hlavičke: verejná absolútna URL, alt text, pevná šírka; súbor existuje v public/.
 import { existsSync } from "node:fs";
-assert.match(email, /<img src="https:\/\/mail\.bovap\.sk\/bovap-logo\.png" alt="Občianske združenie BOVAP" width="130"/);
+assert.match(email, /<img src="https:\/\/mail\.bovap\.sk\/bovap-logo\.png" alt="Občianske združenie BOVAP" width="230"/);
+assert.match(email, /background="https:\/\/mail\.bovap\.sk\/bovap-header\.png"[^>]*bgcolor="#173b52"/);
+assert.ok(existsSync("public/bovap-header.png"), "public/bovap-header.png chýba");
 assert.ok(existsSync("public/bovap-logo.png"), "public/bovap-logo.png chýba");
