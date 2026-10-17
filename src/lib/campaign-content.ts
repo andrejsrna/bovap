@@ -25,7 +25,8 @@ const emailHtml = (value: string) =>
 const mobileSafe = (html: string) =>
   html
     .replace(/(?:&nbsp;|\u00a0| ){3,}/g, (run) => ((run.match(/&nbsp;|\u00a0/g) ?? []).length >= 2 ? ` <span class="email-sp">${run}</span>` : run))
-    .replace(/_{10,}/g, '<span style="display:inline-block;max-width:100%;overflow:hidden;white-space:nowrap;vertical-align:bottom">$&</span>');
+    // Čiara z „______“ by sa na mobile zalomila alebo roztiahla email; nahradí ju skutočná čiara (riadok vysoká, bez minimálnej šírky).
+    .replace(/_{10,}(?:<br>)?/g, '<span style="display:block;height:.9em;border-bottom:1px solid #8796a0;margin:0 0 .5em;font-size:inherit;line-height:0"></span>');
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
