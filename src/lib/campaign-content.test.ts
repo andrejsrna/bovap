@@ -77,7 +77,7 @@ assert.match(email, /overflow-wrap:anywhere/);
 
 // Mobil: odsadenie medzerami (&nbsp;) sa skryje, text nie je do bloku a čiara z „_“ sa nezalomí.
 const spaced = renderCampaignHtml({ title: "T", bodyText: "<p>Úvod<br>&nbsp; &nbsp; &nbsp; • MOaPS<br>Slovo dva</p><p>____________________</p>", cards: [], unsubscribeUrl: "u" });
-assert.match(spaced, / <span class="email-sp">&nbsp; &nbsp; &nbsp; <\/span>• MOaPS/);
+assert.match(spaced, / <span class="email-sp">(?:\u00a0| ){6}<\/span>• MOaPS/);
 assert.match(spaced, /Slovo dva/); // bežné medzery ostávajú
 assert.match(spaced, /<span style="display:inline-block;max-width:100%;overflow:hidden;white-space:nowrap;vertical-align:bottom">_{20}<\/span>/);
 assert.match(spaced, /\.email-sp\{display:none!important\}\.email-text\{text-align:left!important\}/);
