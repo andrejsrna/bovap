@@ -49,8 +49,8 @@ const noLink = renderCampaignHtml({ title: "T", bodyText: "", cards: [{ title: "
 assert.doesNotMatch(noLink, /href=""/);
 assert.doesNotMatch(noLink, /Pozrieť podrobnosti/);
 // Body and card prose are justified, without stretching the last line or headings.
-assert.match(paragraphs, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">/);
-assert.match(noLink, /<div style="[^"]*text-align:justify;text-align-last:left[^"]*">Text<\/div>/);
+assert.match(paragraphs, /<div (?:class="email-text" )?style="[^"]*text-align:justify;text-align-last:left[^"]*">/);
+assert.match(noLink, /<div class="email-text" style="[^"]*text-align:justify;text-align-last:left[^"]*">Text<\/div>/);
 assert.doesNotMatch(paragraphs, /<h1[^>]*text-align:justify/);
 
 // Logo v hlavičke: verejná absolútna URL, alt text, pevná šírka; súbor existuje v public/.
@@ -74,3 +74,11 @@ for (const m of email.slice(shellStart).matchAll(/<table\b|<\/table>/g)) { depth
 assert.ok(email.indexOf('class="email-pad"') < shellEnd && email.indexOf('class="footer-pad"') < shellEnd, "obsah musí byť v email-shell");
 // Dlhé nezalomiteľné reťazce (napr. ______) nesmú rozťahovať email na mobile.
 assert.match(email, /overflow-wrap:anywhere/);
+
+// Mobil: odsadenie medzerami (&nbsp;) sa skryje, text nie je do bloku a čiara z „_“ sa nezalomí.
+const spaced = renderCampaignHtml({ title: "T", bodyText: "<p>Úvod<br>&nbsp; &nbsp; &nbsp; • MOaPS<br>Slovo dva</p><p>____________________</p>", cards: [], unsubscribeUrl: "u" });
+assert.match(spaced, / <span class="email-sp">&nbsp; &nbsp; &nbsp; <\/span>• MOaPS/);
+assert.match(spaced, /Slovo dva/); // bežné medzery ostávajú
+assert.match(spaced, /<span style="display:inline-block;max-width:100%;overflow:hidden;white-space:nowrap;vertical-align:bottom">_{20}<\/span>/);
+assert.match(spaced, /\.email-sp\{display:none!important\}\.email-text\{text-align:left!important\}/);
+assert.equal((spaced.match(/class="email-text"/g) ?? []).length, 1);
