@@ -13,6 +13,7 @@ import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import { subscriberGroupInput } from "@/lib/subscriber-query";
 import { deliverCampaign, targetWhere } from "@/lib/campaign-send";
+import { checkSendTarget, parseSentGroups, recordSentGroups } from "@/lib/campaign-targets";
 import { requireAdmin } from "@/lib/auth-guard";
 import {
   clearLoginAttempts,
@@ -188,17 +189,21 @@ export async function sendCampaignAction(formData: FormData) {
 
   const allActive = formData.get("allActive") === "1";
   const groupNames = subscriberGroupInput(String(formData.get("groups") ?? ""));
+  const campaign = await prisma.campaign.findUnique({ where: { id }, select: { status: true, sentGroups: true } });
+  if (!campaign || !["DRAFT", "SENT"].includes(campaign.status)) redirect(`/kampane/${id}`);
+  const sent = parseSentGroups(campaign.sentGroups);
+  if (checkSendTarget(sent, allActive, groupNames)) redirect(`/kampane/${id}?sendError=3`);
   const subscribers = await prisma.subscriber.findMany({
     where: targetWhere(allActive, groupNames),
     select: { id: true },
   });
   if (!subscribers.length) redirect(`/kampane/${id}?sendError=2`);
 
-  // Atómový prechod DRAFT -> SENDING: druhý paralelný request už neprejde
-  // (updateMany vráti count 0, ak kampaň medzitým zmenila stav).
+  // Atómový prechod DRAFT/SENT -> SENDING: druhý paralelný request už neprejde
+  // (updateMany vráti count 0, ak kampaň medzitým zmenila stav alebo zoznam odoslaných skupín).
   const claimed = await prisma.campaign.updateMany({
-    where: { id, status: "DRAFT" },
-    data: { status: "SENDING", recipientsTarget: subscribers.length },
+    where: { id, status: campaign.status, sentGroups: campaign.sentGroups },
+    data: { status: "SENDING", sentGroups: JSON.stringify(recordSentGroups(sent, allActive, groupNames, new Date())) },
   });
   if (claimed.count !== 1) redirect(`/kampane/${id}`);
 
@@ -211,6 +216,8 @@ export async function sendCampaignAction(formData: FormData) {
     })),
     skipDuplicates: true,
   });
+  // Cieľ = všetci príjemcovia kampane naprieč odoslaniami (kto už email dostal, druhý raz ho nedostane).
+  await prisma.campaign.update({ where: { id }, data: { recipientsTarget: await prisma.campaignRecipient.count({ where: { campaignId: id } }) } });
 
   // Odošle celú frontu po dávkach na pozadí (cron nie je nastavený, preto nesmie ostať len prvá dávka).
   // Nečakáme na výsledok – fronta je perzistentná v DB a obnoviteľná.

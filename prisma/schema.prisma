@@ -60,6 +60,7 @@ model Campaign {
   imageUrl         String? // fotka (upload/URL)
   status           String              @default("DRAFT") // DRAFT | SENDING | SENT | FAILED
   recipientsTarget Int                 @default(0)
+  sentGroups       String              @default("[]") // JSON [{name, at}] – skupiny, ktorým už kampaň odišla ("*" = všetci)
   recipientsSent   Int                 @default(0)
   recipientsFailed Int                 @default(0)
   statsDelivered   Int                 @default(0)
