@@ -230,9 +230,19 @@ async function finalizeIfDone(campaignId: string) {
  * Kompatibilná obálka: odošle celú frontu kampane po dávkach.
  * Ponechaná pre existujúce volania; nové cesty používajú processSendQueue.
  */
-export async function deliverCampaign(campaignId: string): Promise<void> {
-  for (let guard = 0; guard < 100; guard++) {
-    const { pendingLeft } = await processSendQueue({ campaignId });
-    if (pendingLeft === 0) break;
+// Jedna kampaň = jeden bežiaci odosielateľ (jeden kontajner), inak by dve slučky vzali tú istú dávku a poslali email dvakrát.
+const delivering = new Set<string>();
+
+export async function deliverCampaign(campaignId: string): Promise<boolean> {
+  if (delivering.has(campaignId)) return false;
+  delivering.add(campaignId);
+  try {
+    for (let guard = 0; guard < 100; guard++) {
+      const { processed, pendingLeft } = await processSendQueue({ campaignId });
+      if (pendingLeft === 0 || processed === 0) break;
+    }
+  } finally {
+    delivering.delete(campaignId);
   }
+  return true;
 }

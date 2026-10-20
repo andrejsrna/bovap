@@ -12,7 +12,7 @@ import { duplicateCampaignData } from "@/lib/campaign-duplicate";
 import { attachCampaignDocuments, attachPdfLinks } from "@/lib/r2-pdf";
 import { parseCampaignDocuments } from "@/lib/campaign-documents";
 import { subscriberGroupInput } from "@/lib/subscriber-query";
-import { processSendQueue, targetWhere } from "@/lib/campaign-send";
+import { deliverCampaign, targetWhere } from "@/lib/campaign-send";
 import { requireAdmin } from "@/lib/auth-guard";
 import {
   clearLoginAttempts,
@@ -212,9 +212,9 @@ export async function sendCampaignAction(formData: FormData) {
     skipDuplicates: true,
   });
 
-  // Nakopneme prvú dávku fronty; zvyšok dobehne cez retry/cron.
+  // Odošle celú frontu po dávkach na pozadí (cron nie je nastavený, preto nesmie ostať len prvá dávka).
   // Nečakáme na výsledok – fronta je perzistentná v DB a obnoviteľná.
-  void processSendQueue({ campaignId: id }).catch(() => undefined);
+  void deliverCampaign(id).catch(() => undefined);
 
   redirect(`/kampane/${id}?sending=1`);
 }
@@ -225,7 +225,7 @@ export async function retrySendAction(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const campaign = await prisma.campaign.findUnique({ where: { id } });
   if (!campaign || campaign.status !== "SENDING") redirect(`/kampane/${id}`);
-  void processSendQueue({ campaignId: id }).catch(() => undefined);
+  void deliverCampaign(id).catch(() => undefined);
   redirect(`/kampane/${id}?sending=1`);
 }
 
