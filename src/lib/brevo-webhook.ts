@@ -137,12 +137,12 @@ export async function applyBrevoEvent(payload: {
 
   switch (payload.event) {
     case "DELIVERED": {
-      if (recipient.status === "DELIVERED") return "duplicate";
-      if (!forwardOnly(recipient.status, "DELIVERED")) return "duplicate";
+      // Doručenie sa počíta pri prvom zápise deliveredAt – aj keď open/click prišiel skôr (Brevo neručí za poradie).
+      if (recipient.deliveredAt) return "duplicate";
       await prisma.$transaction([
         prisma.campaignRecipient.update({
           where: { id: recipient.id },
-          data: { status: "DELIVERED", deliveredAt: at, error: null },
+          data: forwardOnly(recipient.status, "DELIVERED") ? { status: "DELIVERED", deliveredAt: at, error: null } : { deliveredAt: at },
         }),
         prisma.campaign.update({
           where: { id: campaign.id },
@@ -154,10 +154,8 @@ export async function applyBrevoEvent(payload: {
     case "OPENED": {
       if (recipient.openedAt) return "duplicate";
       const data: Record<string, unknown> = { openedAt: at };
-      if (forwardOnly(recipient.status, "OPENED")) {
-        data.status = "OPENED";
-        if (!recipient.deliveredAt) data.deliveredAt = at;
-      }
+      if (forwardOnly(recipient.status, "OPENED")) data.status = "OPENED";
+      if (!recipient.deliveredAt) data.deliveredAt = at;
       await prisma.$transaction([
         prisma.campaignRecipient.update({
           where: { id: recipient.id },
@@ -165,7 +163,7 @@ export async function applyBrevoEvent(payload: {
         }),
         prisma.campaign.update({
           where: { id: campaign.id },
-          data: { statsOpened: { increment: 1 } },
+          data: { statsOpened: { increment: 1 }, ...(data.deliveredAt ? { statsDelivered: { increment: 1 } } : {}) },
         }),
       ]);
       return "applied";
@@ -173,11 +171,9 @@ export async function applyBrevoEvent(payload: {
     case "CLICKED": {
       if (recipient.clickedAt) return "duplicate";
       const data: Record<string, unknown> = { clickedAt: at };
-      if (forwardOnly(recipient.status, "CLICKED")) {
-        data.status = "CLICKED";
-        if (!recipient.deliveredAt) data.deliveredAt = at;
-        if (!recipient.openedAt) data.openedAt = at;
-      }
+      if (forwardOnly(recipient.status, "CLICKED")) data.status = "CLICKED";
+      if (!recipient.deliveredAt) data.deliveredAt = at;
+      if (!recipient.openedAt) data.openedAt = at;
       await prisma.$transaction([
         prisma.campaignRecipient.update({
           where: { id: recipient.id },
@@ -185,7 +181,7 @@ export async function applyBrevoEvent(payload: {
         }),
         prisma.campaign.update({
           where: { id: campaign.id },
-          data: { statsClicked: { increment: 1 } },
+          data: { statsClicked: { increment: 1 }, ...(data.openedAt ? { statsOpened: { increment: 1 } } : {}), ...(data.deliveredAt ? { statsDelivered: { increment: 1 } } : {}) },
         }),
       ]);
       return "applied";
